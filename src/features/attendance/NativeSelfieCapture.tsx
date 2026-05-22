@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import {
   Camera,
@@ -37,10 +37,23 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
   const [instruction, setInstruction] = useState('Center your face in the guide.');
   const [faceCentered, setFaceCentered] = useState(false);
   const motionRef = useRef<MotionState>({ baselineY: null, upSeen: false, downSeen: false });
+  const activeRef = useRef(active);
+  const captureScheduledRef = useRef(false);
   const captureStartedRef = useRef(false);
+  const captureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  useEffect(() => () => {
+    if (captureTimerRef.current) {
+      clearTimeout(captureTimerRef.current);
+    }
+  }, []);
 
   const captureSelfie = useCallback(async () => {
-    if (captureStartedRef.current || busy) {
+    if (captureStartedRef.current || busy || !activeRef.current) {
       return;
     }
 
@@ -56,15 +69,35 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
       };
       onCaptured(capture);
     } catch (caught) {
+      captureScheduledRef.current = false;
       captureStartedRef.current = false;
       onError(caught instanceof Error ? caught.message : 'Failed to capture selfie.');
       setInstruction('Center your face in the guide.');
     }
   }, [busy, onCaptured, onError, photoOutput]);
 
+  const scheduleCaptureSelfie = useCallback(() => {
+    if (captureScheduledRef.current || captureStartedRef.current) {
+      return;
+    }
+
+    captureScheduledRef.current = true;
+    setInstruction('Hold still.');
+    captureTimerRef.current = setTimeout(() => {
+      void captureSelfie();
+    }, 450);
+  }, [captureSelfie]);
+
   const handleFacesDetected = useCallback(
     (faces: Face[]) => {
-      if (!active || busy || captureStartedRef.current || layout.width === 0 || layout.height === 0) {
+      if (
+        !active ||
+        busy ||
+        captureScheduledRef.current ||
+        captureStartedRef.current ||
+        layout.width === 0 ||
+        layout.height === 0
+      ) {
         return;
       }
 
@@ -111,11 +144,10 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
 
       if (motion.upSeen && centerY > motion.baselineY + threshold) {
         motion.downSeen = true;
-        setInstruction('Hold still.');
-        void captureSelfie();
+        scheduleCaptureSelfie();
       }
     },
-    [active, busy, captureSelfie, layout.height, layout.width],
+    [active, busy, layout.height, layout.width, scheduleCaptureSelfie],
   );
 
   const faceOutput = useFaceDetectorOutput(
