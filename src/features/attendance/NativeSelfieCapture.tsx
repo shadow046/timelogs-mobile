@@ -1,0 +1,233 @@
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  Camera,
+  useCameraDevice,
+  useCameraPermission,
+  usePhotoOutput,
+} from 'react-native-vision-camera';
+import { Face, useFaceDetectorOutput } from 'react-native-vision-camera-face-detector';
+import { PrimaryButton } from '../../components/PrimaryButton';
+import { EvidenceCapture } from '../../types/attendance';
+import { SelfieCaptureProps } from './SelfieCaptureTypes';
+
+type GuideLayout = {
+  width: number;
+  height: number;
+};
+
+type MotionState = {
+  baselineY: number | null;
+  upSeen: boolean;
+  downSeen: boolean;
+};
+
+const verticalMoveRatio = 0.055;
+
+export function NativeSelfieCapture({ active, busy, onCaptured, onError }: SelfieCaptureProps) {
+  const device = useCameraDevice('front');
+  const cameraPermission = useCameraPermission();
+  const photoOutput = usePhotoOutput({
+    containerFormat: 'jpeg',
+    quality: 0.86,
+    qualityPrioritization: 'speed',
+  });
+  const dimensions = useWindowDimensions();
+  const [layout, setLayout] = useState<GuideLayout>({ width: 0, height: 0 });
+  const [instruction, setInstruction] = useState('Center your face in the guide.');
+  const [faceCentered, setFaceCentered] = useState(false);
+  const motionRef = useRef<MotionState>({ baselineY: null, upSeen: false, downSeen: false });
+  const captureStartedRef = useRef(false);
+
+  const captureSelfie = useCallback(async () => {
+    if (captureStartedRef.current || busy) {
+      return;
+    }
+
+    captureStartedRef.current = true;
+    setInstruction('Capturing selfie.');
+
+    try {
+      const photo = await photoOutput.capturePhotoToFile({ flashMode: 'off' }, {});
+      const imageUri = photo.filePath.startsWith('file://') ? photo.filePath : `file://${photo.filePath}`;
+      const capture: EvidenceCapture = {
+        imageUri,
+        durationSeconds: 1,
+      };
+      onCaptured(capture);
+    } catch (caught) {
+      captureStartedRef.current = false;
+      onError(caught instanceof Error ? caught.message : 'Failed to capture selfie.');
+      setInstruction('Center your face in the guide.');
+    }
+  }, [busy, onCaptured, onError, photoOutput]);
+
+  const handleFacesDetected = useCallback(
+    (faces: Face[]) => {
+      if (!active || busy || captureStartedRef.current || layout.width === 0 || layout.height === 0) {
+        return;
+      }
+
+      const face = faces[0];
+      if (!face) {
+        motionRef.current = { baselineY: null, upSeen: false, downSeen: false };
+        setFaceCentered(false);
+        setInstruction('Center your face in the guide.');
+        return;
+      }
+
+      const centerX = face.bounds.x + face.bounds.width / 2;
+      const centerY = face.bounds.y + face.bounds.height / 2;
+      const guideCenterX = layout.width / 2;
+      const guideCenterY = layout.height * 0.45;
+      const radiusX = layout.width * 0.33;
+      const radiusY = layout.height * 0.24;
+      const normalizedDistance =
+        ((centerX - guideCenterX) * (centerX - guideCenterX)) / (radiusX * radiusX) +
+        ((centerY - guideCenterY) * (centerY - guideCenterY)) / (radiusY * radiusY);
+      const faceFits = face.bounds.width >= layout.width * 0.18 && face.bounds.width <= layout.width * 0.7;
+      const insideGuide = normalizedDistance <= 1 && faceFits;
+
+      setFaceCentered(insideGuide);
+
+      if (!insideGuide) {
+        motionRef.current = { baselineY: null, upSeen: false, downSeen: false };
+        setInstruction('Center your face in the guide.');
+        return;
+      }
+
+      const motion = motionRef.current;
+      if (motion.baselineY === null) {
+        motion.baselineY = centerY;
+        setInstruction('Move up and down.');
+        return;
+      }
+
+      const threshold = layout.height * verticalMoveRatio;
+      if (centerY < motion.baselineY - threshold) {
+        motion.upSeen = true;
+        setInstruction('Now move down.');
+      }
+
+      if (motion.upSeen && centerY > motion.baselineY + threshold) {
+        motion.downSeen = true;
+        setInstruction('Hold still.');
+        void captureSelfie();
+      }
+    },
+    [active, busy, captureSelfie, layout.height, layout.width],
+  );
+
+  const faceOutput = useFaceDetectorOutput(
+    useMemo(
+      () => ({
+        autoMode: true,
+        cameraFacing: 'front' as const,
+        minFaceSize: 0.18,
+        onError: (error: Error) => onError(error.message),
+        onFacesDetected: handleFacesDetected,
+        outputResolution: 'preview' as const,
+        performanceMode: 'fast' as const,
+        runClassifications: false,
+        runContours: false,
+        runLandmarks: false,
+        trackingEnabled: true,
+        windowHeight: layout.height || dimensions.height,
+        windowWidth: layout.width || dimensions.width,
+      }),
+      [dimensions.height, dimensions.width, handleFacesDetected, layout.height, layout.width, onError],
+    ),
+  );
+
+  if (!cameraPermission.hasPermission) {
+    return (
+      <View style={styles.permissionBox}>
+        <Text style={styles.body}>Camera permission is required.</Text>
+        <PrimaryButton label="Allow camera" onPress={() => void cameraPermission.requestPermission()} />
+      </View>
+    );
+  }
+
+  if (!device) {
+    return <Text style={styles.status}>Front camera is not available.</Text>;
+  }
+
+  return (
+    <View style={styles.wrapper}>
+      <View
+        style={styles.cameraShell}
+        onLayout={(event) => {
+          const nextLayout = event.nativeEvent.layout;
+          setLayout({ width: nextLayout.width, height: nextLayout.height });
+        }}
+      >
+        <Camera
+          device={device}
+          isActive={active && !busy}
+          mirrorMode="on"
+          outputs={[faceOutput, photoOutput]}
+          resizeMode="cover"
+          style={StyleSheet.absoluteFill}
+        />
+        <View pointerEvents="none" style={[styles.faceGuide, faceCentered ? styles.faceGuideReady : null]} />
+      </View>
+      <Text style={faceCentered ? styles.readyInstruction : styles.instruction}>{instruction}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrapper: {
+    gap: 10,
+  },
+  cameraShell: {
+    aspectRatio: 3 / 4,
+    backgroundColor: '#152B2A',
+    overflow: 'hidden',
+    position: 'relative',
+    width: '100%',
+  },
+  faceGuide: {
+    alignSelf: 'center',
+    borderColor: '#FFFFFF',
+    borderRadius: 999,
+    borderWidth: 3,
+    height: '48%',
+    opacity: 0.92,
+    position: 'absolute',
+    top: '21%',
+    width: '66%',
+  },
+  faceGuideReady: {
+    borderColor: '#35D0A4',
+  },
+  instruction: {
+    color: '#52615E',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  readyInstruction: {
+    color: '#126C67',
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  permissionBox: {
+    backgroundColor: '#F9FAF8',
+    borderColor: '#C8D1CB',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    padding: 14,
+  },
+  body: {
+    color: '#2E3C3A',
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  status: {
+    color: '#52615E',
+    fontSize: 14,
+  },
+});
