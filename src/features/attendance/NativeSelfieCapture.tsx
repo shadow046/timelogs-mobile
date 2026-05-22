@@ -58,7 +58,6 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
     }
 
     captureStartedRef.current = true;
-    setInstruction('Capturing selfie.');
 
     try {
       const photo = await photoOutput.capturePhotoToFile({ flashMode: 'off' }, {});
