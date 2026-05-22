@@ -22,7 +22,8 @@ type MotionState = {
   downSeen: boolean;
 };
 
-const verticalMoveRatio = 0.055;
+const verticalMoveRatio = 0.045;
+const captureCountdownSeconds = 5;
 
 export function NativeSelfieCapture({ active, busy, onCaptured, onError }: SelfieCaptureProps) {
   const device = useCameraDevice('front');
@@ -35,12 +36,14 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
   const dimensions = useWindowDimensions();
   const [layout, setLayout] = useState<GuideLayout>({ width: 0, height: 0 });
   const [instruction, setInstruction] = useState('Center your face in the guide.');
+  const [countdown, setCountdown] = useState<number | null>(null);
   const [faceCentered, setFaceCentered] = useState(false);
   const motionRef = useRef<MotionState>({ baselineY: null, upSeen: false, downSeen: false });
   const activeRef = useRef(active);
   const captureScheduledRef = useRef(false);
   const captureStartedRef = useRef(false);
   const captureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     activeRef.current = active;
@@ -49,6 +52,9 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
   useEffect(() => () => {
     if (captureTimerRef.current) {
       clearTimeout(captureTimerRef.current);
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
     }
   }, []);
 
@@ -70,6 +76,7 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
     } catch (caught) {
       captureScheduledRef.current = false;
       captureStartedRef.current = false;
+      setCountdown(null);
       onError(caught instanceof Error ? caught.message : 'Failed to capture selfie.');
       setInstruction('Center your face in the guide.');
     }
@@ -82,9 +89,24 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
 
     captureScheduledRef.current = true;
     setInstruction('Hold still.');
+    setCountdown(captureCountdownSeconds);
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown((current) => {
+        if (current === null || current <= 1) {
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+
+          return current === null ? null : 0;
+        }
+
+        return current - 1;
+      });
+    }, 1000);
     captureTimerRef.current = setTimeout(() => {
       void captureSelfie();
-    }, 450);
+    }, captureCountdownSeconds * 1000);
   }, [captureSelfie]);
 
   const handleFacesDetected = useCallback(
@@ -201,6 +223,11 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
           style={StyleSheet.absoluteFill}
         />
         <View pointerEvents="none" style={[styles.faceGuide, faceCentered ? styles.faceGuideReady : null]} />
+        {countdown !== null ? (
+          <View pointerEvents="none" style={styles.countdownOverlay}>
+            <Text style={styles.countdownText}>{countdown}</Text>
+          </View>
+        ) : null}
       </View>
       <Text style={faceCentered ? styles.readyInstruction : styles.instruction}>{instruction}</Text>
     </View>
@@ -231,6 +258,24 @@ const styles = StyleSheet.create({
   },
   faceGuideReady: {
     borderColor: '#35D0A4',
+  },
+  countdownOverlay: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    height: '48%',
+    justifyContent: 'center',
+    position: 'absolute',
+    top: '21%',
+    width: '66%',
+  },
+  countdownText: {
+    color: '#FFFFFF',
+    fontSize: 82,
+    fontWeight: '900',
+    textAlign: 'center',
+    textShadowColor: '#152B2A',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
   },
   instruction: {
     color: '#52615E',
