@@ -1,7 +1,10 @@
 import { Coordinates } from '../types/attendance';
+import appManifest from '../../app.json';
 
 export const appConfig = {
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://timelogs.ideaserv.online/api',
+  appVersion: appManifest.expo.version,
+  appVersionCode: appManifest.expo.android?.versionCode ?? 0,
   geofence: {
     latitude: Number(process.env.EXPO_PUBLIC_GEOFENCE_LATITUDE ?? 14.5995124),
     longitude: Number(process.env.EXPO_PUBLIC_GEOFENCE_LONGITUDE ?? 120.9842195),

@@ -3,8 +3,10 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ComponentType, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -31,6 +33,7 @@ export default function App() {
   const [user, setUser] = useState<LoginResponse['user'] | null>(null);
   const [authMessage, setAuthMessage] = useState('Sign in to continue.');
   const [authBusy, setAuthBusy] = useState(false);
+  const [updateBusy, setUpdateBusy] = useState(false);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [logsBusy, setLogsBusy] = useState(false);
   const [logsMessage, setLogsMessage] = useState('No attendance logs loaded yet.');
@@ -91,6 +94,41 @@ export default function App() {
       setAuthMessage(caught instanceof Error ? caught.message : 'Sign in failed.');
     } finally {
       setAuthBusy(false);
+    }
+  }
+
+  async function checkForUpdates() {
+    setUpdateBusy(true);
+    setAuthMessage('Checking for updates.');
+
+    try {
+      const update = await apiClient.checkAppUpdate(appConfig.appVersion, appConfig.appVersionCode);
+      if (!update.update_available) {
+        setAuthMessage(`App is up to date. Version ${appConfig.appVersion}`);
+        return;
+      }
+
+      const details = update.details.length ? `\n\n${update.details.map((item) => `- ${item}`).join('\n')}` : '';
+      Alert.alert(
+        `Update ${update.latest_version} available`,
+        `Current version: ${appConfig.appVersion}\nLatest version: ${update.latest_version}${details}`,
+        [
+          ...(update.mandatory
+            ? []
+            : [{ text: 'Later', style: 'cancel' as const }]),
+          {
+            text: 'Update',
+            onPress: () => {
+              void Linking.openURL(update.apk_url);
+            },
+          },
+        ],
+      );
+      setAuthMessage(`Update ${update.latest_version} is available.`);
+    } catch (caught) {
+      setAuthMessage(caught instanceof Error ? caught.message : 'Unable to check for updates.');
+    } finally {
+      setUpdateBusy(false);
     }
   }
 
@@ -156,6 +194,12 @@ export default function App() {
                 value={password}
               />
               <PrimaryButton label={authBusy ? 'Signing in...' : 'Sign in'} onPress={signIn} disabled={authBusy} />
+              <Text onPress={checkForUpdates} style={styles.updateLink}>
+                {updateBusy ? 'Checking updates...' : 'Check updates'}
+              </Text>
+              <Text style={styles.smallText}>
+                Version {appConfig.appVersion} ({appConfig.appVersionCode})
+              </Text>
               {authMessage ? <Text style={styles.status}>{authMessage}</Text> : null}
             </View>
           </ScrollView>
@@ -429,6 +473,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     paddingVertical: 4,
+  },
+  updateLink: {
+    color: '#126C67',
+    fontSize: 14,
+    fontWeight: '800',
+    paddingVertical: 4,
+    textAlign: 'center',
   },
   input: {
     backgroundColor: '#F9FAF8',

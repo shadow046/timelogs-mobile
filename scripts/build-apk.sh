@@ -172,7 +172,7 @@ require_command pnpm
 require_command java
 require_command javac
 
-if [[ ! -x "$MOBILE_ROOT/node_modules/.bin/expo" ]] || [[ ! -d "$MOBILE_ROOT/node_modules/react-native-maps" ]]; then
+if [[ ! -x "$MOBILE_ROOT/node_modules/.bin/expo" ]] || [[ ! -d "$MOBILE_ROOT/node_modules/babel-preset-expo" ]] || [[ ! -d "$MOBILE_ROOT/node_modules/react-native-vision-camera" ]]; then
   print_warning "Installing or refreshing mobile dependencies first."
   if [[ -f "$MOBILE_ROOT/pnpm-lock.yaml" ]]; then
     (cd "$MOBILE_ROOT" && "$PNPM_BIN" install --frozen-lockfile)

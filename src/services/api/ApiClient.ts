@@ -1,6 +1,19 @@
 import { appConfig } from '../../config/appConfig';
 import { Coordinates } from '../../types/attendance';
 
+export type AppUpdateResponse = {
+  platform: string;
+  update_available: boolean;
+  mandatory: boolean;
+  latest_version: string;
+  latest_version_code: number;
+  current_version: string | null;
+  current_version_code: number | null;
+  apk_url: string;
+  details: string[];
+  published_at: string | null;
+};
+
 export type LoginResponse = {
   token: string;
   user: {
@@ -47,6 +60,21 @@ export class ApiClient {
     });
 
     return parseJsonResponse<LoginResponse>(response);
+  }
+
+  async checkAppUpdate(currentVersion: string, currentVersionCode: number): Promise<AppUpdateResponse> {
+    const params = new URLSearchParams({
+      platform: 'android',
+      current_version: currentVersion,
+      current_version_code: String(currentVersionCode),
+    });
+    const response = await fetch(`${this.baseUrl}/app-update?${params.toString()}`, {
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    return parseJsonResponse<AppUpdateResponse>(response);
   }
 
   async postForm<T>(path: string, token: string, formData: FormData): Promise<T> {
