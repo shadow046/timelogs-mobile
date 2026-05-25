@@ -198,6 +198,8 @@ const details = (process.env.UPDATE_MANIFEST_DETAILS || '')
   .filter(Boolean);
 
 const manifest = {
+  version: `v${process.env.UPDATE_MANIFEST_VERSION}`,
+  changelog: details.length ? details.join('\n') : 'Bug fixes and improvements.',
   latest_version: process.env.UPDATE_MANIFEST_VERSION,
   latest_version_code: Number(process.env.UPDATE_MANIFEST_VERSION_CODE),
   apk_path: process.env.UPDATE_MANIFEST_APK_PATH,
