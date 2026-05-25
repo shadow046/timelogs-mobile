@@ -2,7 +2,7 @@
   "expo": {
     "name": "TimeLogs Presence",
     "slug": "timelogs-presence",
-    "version": "1.0.6",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +21,7 @@
     },
     "android": {
       "package": "com.timelogs.presence",
-      "versionCode": 1000600,
+      "versionCode": 1010000,
       "permissions": [
         "CAMERA",
         "ACCESS_COARSE_LOCATION",

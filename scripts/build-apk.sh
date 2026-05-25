@@ -1,5 +1,11 @@
 #!/bin/bash
 set -euo pipefail
+export NVM_DIR="$HOME/.nvm"
+source "$NVM_DIR/nvm.sh"
+
+nvm use 22
+
+node -v
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -24,10 +30,10 @@ LATEST_INFO_FILE="$OUTPUT_DIR/latest.txt"
 LATEST_APK_NAME="TimeLogsPresence.apk"
 APP_LABEL="TimeLogs Presence"
 
-export PATH="$PATH:/usr/bin:/bin"
+# export PATH="/usr/bin:/bin:$PATH"
+export PATH="$HOME/.nvm/versions/node/v22.22.3/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 ANDROID_SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/root/Android/Sdk}}"
-ANDROID_HOME="$ANDROID_SDK_ROOT"
 AAPT_BIN="$(find "$ANDROID_SDK_ROOT/build-tools" -maxdepth 2 -type f -name aapt 2>/dev/null | sort -V | tail -1 || true)"
 APKSIGNER_BIN="$(find "$ANDROID_SDK_ROOT/build-tools" -maxdepth 2 -type f -name apksigner 2>/dev/null | sort -V | tail -1 || true)"
 NODE_BIN="${NODE_BIN:-$(command -v node)}"
@@ -166,22 +172,18 @@ require_command pnpm
 require_command java
 require_command javac
 
-if [[ ! -d "$ANDROID_SDK_ROOT" ]]; then
-  print_error "Android SDK not found at $ANDROID_SDK_ROOT"
-  print_error "Set ANDROID_HOME or ANDROID_SDK_ROOT before running this script."
-  exit 1
+if [[ ! -x "$MOBILE_ROOT/node_modules/.bin/expo" ]] || [[ ! -d "$MOBILE_ROOT/node_modules/react-native-maps" ]]; then
+  print_warning "Installing or refreshing mobile dependencies first."
+  if [[ -f "$MOBILE_ROOT/pnpm-lock.yaml" ]]; then
+    (cd "$MOBILE_ROOT" && "$PNPM_BIN" install --frozen-lockfile)
+  else
+    (cd "$MOBILE_ROOT" && "$PNPM_BIN" install)
+  fi
 fi
-
-export ANDROID_HOME
-export ANDROID_SDK_ROOT
 
 if [[ ! -d "$ANDROID_ROOT" ]]; then
   print_warning "Android folder not found. Running Expo prebuild first."
   (cd "$MOBILE_ROOT" && "$PNPM_BIN" exec expo prebuild --platform android)
-fi
-
-if [[ ! -f "$ANDROID_ROOT/local.properties" ]]; then
-  printf 'sdk.dir=%s\n' "$ANDROID_SDK_ROOT" > "$ANDROID_ROOT/local.properties"
 fi
 
 VERSION="$(read_json_value 'app.expo.version')"
@@ -250,7 +252,12 @@ fi
 print_header "Building APK..."
 (cd "$ANDROID_ROOT" && {
   if [[ "$SHOULD_CLEAN" == true ]]; then
-    ./gradlew clean
+    print_warning "Removing stale Android build outputs."
+    rm -rf \
+      "$ANDROID_ROOT/.gradle" \
+      "$ANDROID_ROOT/build" \
+      "$ANDROID_ROOT/app/.cxx" \
+      "$ANDROID_ROOT/app/build"
   fi
 
   GRADLE_ARGS=(assembleRelease)
