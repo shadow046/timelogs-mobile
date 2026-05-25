@@ -136,7 +136,7 @@ NODE
 get_package_name() {
   local apk_path="$1"
   if [[ -x "${AAPT_BIN:-}" ]]; then
-    "$AAPT_BIN" dump badging "$apk_path" 2>/dev/null | awk -F"'" '/^package: name=/{print $2; exit}'
+    "$AAPT_BIN" dump badging "$apk_path" 2>/dev/null | awk -F"'" '/^package: name=/{print $2; exit}' || true
   fi
 }
 
@@ -144,7 +144,7 @@ get_badging_value() {
   local apk_path="$1"
   local pattern="$2"
   if [[ -x "${AAPT_BIN:-}" ]]; then
-    "$AAPT_BIN" dump badging "$apk_path" 2>/dev/null | awk -F"'" -v pattern="$pattern" '$0 ~ pattern {print $2; exit}'
+    "$AAPT_BIN" dump badging "$apk_path" 2>/dev/null | awk -F"'" -v pattern="$pattern" '$0 ~ pattern {print $2; exit}' || true
   fi
 }
 
@@ -152,7 +152,7 @@ get_signer_digest() {
   local apk_path="$1"
   local digest_label="$2"
   if [[ -x "${APKSIGNER_BIN:-}" ]]; then
-    "$APKSIGNER_BIN" verify --verbose --print-certs "$apk_path" 2>/dev/null | awk -F': ' -v label="$digest_label" '$1 == label {print $2; exit}'
+    "$APKSIGNER_BIN" verify --verbose --print-certs "$apk_path" 2>/dev/null | awk -F': ' -v label="$digest_label" '$1 == label {print $2; exit}' || true
   fi
 }
 
@@ -169,7 +169,9 @@ get_file_size() {
 
 get_sha256() {
   local file_path="$1"
-  sha256sum "$file_path" 2>/dev/null | awk '{print $1}'
+  if [[ -f "$file_path" ]]; then
+    sha256sum "$file_path" 2>/dev/null | awk '{print $1}' || true
+  fi
 }
 
 write_update_manifest() {
