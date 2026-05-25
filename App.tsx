@@ -141,14 +141,14 @@ function TimeLogsApp() {
           style={styles.keyboard}
         >
           <ScrollView contentContainerStyle={[styles.content, styles.loginContent]}>
-            <View style={styles.header}>
+            {/* <View style={styles.header}>
               <Text style={styles.title}>TimeLogs</Text>
               <Text style={styles.subtitle}>Employee attendance and proof-of-presence.</Text>
-            </View>
+            </View> */}
 
             <View style={styles.panel}>
               <Text style={styles.panelTitle}>Sign in</Text>
-              <Text style={styles.smallText}>Endpoint: {appConfig.apiBaseUrl}</Text>
+              {/* <Text style={styles.smallText}>Endpoint: {appConfig.apiBaseUrl}</Text> */}
               <TextInput
                 autoCapitalize="none"
                 autoComplete="username"
@@ -170,7 +170,7 @@ function TimeLogsApp() {
                 {updater.checking ? 'Checking updates...' : 'Check updates'}
               </Text>
               <Text style={styles.smallText}>
-                Version {appConfig.appVersion} ({appConfig.appVersionCode})
+                Version {appConfig.appVersion}
               </Text>
               {authMessage ? <Text style={styles.status}>{authMessage}</Text> : null}
             </View>
@@ -213,7 +213,7 @@ function TimeLogsApp() {
             <View style={styles.dashboardHeader}>
               <View style={styles.dashboardCopy}>
                 <Text style={styles.panelTitle}>My Time Logs</Text>
-                <Text style={styles.smallText}>Endpoint: {appConfig.apiBaseUrl}</Text>
+                {/* <Text style={styles.smallText}>Endpoint: {appConfig.apiBaseUrl}</Text> */}
               </View>
               <Text onPress={signOut} style={styles.linkButton}>Sign out</Text>
             </View>
@@ -245,7 +245,7 @@ function TimeLogsApp() {
               <Text style={styles.panelTitle}>Time in</Text>
               <Text onPress={() => setActiveView('logs')} style={styles.linkButton}>Back to logs</Text>
             </View>
-            <Text style={styles.status}>{flow.message}</Text>
+            {/* <Text style={styles.status}>{flow.message}</Text> */}
             {flow.error ? <Text style={styles.error}>{flow.error}</Text> : null}
 
             {flow.locationSnapshot ? (
@@ -267,12 +267,12 @@ function TimeLogsApp() {
                 <View style={styles.addressBox}>
                   <Text style={styles.body}>{flow.locationSnapshot.address}</Text>
                 </View>
-                {flow.locationSnapshot.accuracy !== null ? (
+                {/* {flow.locationSnapshot.accuracy !== null ? (
                   <Text style={styles.status}>
                     Accuracy: {Math.round(flow.locationSnapshot.accuracy)} m
                   </Text>
-                ) : null}
-                <Text style={styles.status}>This address will be saved with your time-in evidence.</Text>
+                ) : null} */}
+                {/* <Text style={styles.status}>This address will be saved with your time-in evidence.</Text> */}
               </View>
             ) : null}
 
