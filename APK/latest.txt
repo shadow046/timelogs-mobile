@@ -1,0 +1,25 @@
+TimeLogs Presence APK Build
+===========================
+Version: 1.1.4
+Version Code: 1010400
+Built At: 2026-05-25 12:56:42 PST
+Built By: root
+Build Host: ubuntu
+Project Root: /opt/timelogs-mobile
+Output Directory: /opt/timelogs-mobile/APK
+Build Path: /opt/timelogs-mobile/android/app/build/outputs/apk/release
+Build Type: Release
+Clean Build: false
+Expo Prebuild: false
+App Label: TimeLogs Presence
+Package Name: com.timelogs.presence
+Min SDK: 24
+Target SDK: 36
+Latest APK: TimeLogsPresence.apk
+Latest APK Size: 156005526 bytes / 148.78 MB
+Latest APK SHA-256: 85f636320b625a2014431589a5f617764d24484abcddc984e003cfa297eba4b1
+Versioned APK: TimeLogsPresence-1.1.4.apk
+Versioned APK Size: 156005526 bytes / 148.78 MB
+Versioned APK SHA-256: 85f636320b625a2014431589a5f617764d24484abcddc984e003cfa297eba4b1
+Signer SHA-256: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c
+Signer SHA-1: 5e8f16062ea3cd2c4a0d547876baa6f38cabf625
