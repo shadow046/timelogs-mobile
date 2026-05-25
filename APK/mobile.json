@@ -1,14 +1,14 @@
 {
-  "version": "v1.1.7",
+  "version": "v1.1.9",
   "changelog": "Bug fixes and improvements.",
-  "latest_version": "1.1.7",
-  "latest_version_code": 1010700,
+  "latest_version": "1.1.9",
+  "latest_version_code": 1010900,
   "apk_path": "/updates/TimeLogsPresence.apk",
   "apk_url": "https://timelogs.ideaserv.online/updates/TimeLogsPresence.apk",
   "mandatory": false,
-  "published_at": "2026-05-25T05:49:12.203Z",
-  "apk_sha256": "7da36bc77bbbccca0679e587977800ec1138e1dcdbbc8a1ad70256b1159e5833",
-  "apk_size_bytes": 156043134,
+  "published_at": "2026-05-25T06:15:37.199Z",
+  "apk_sha256": "c1aa8279dce26db54aef5324d87f1da7d4573ded7e39d2ab3e6bc419c8502ae3",
+  "apk_size_bytes": 156043630,
   "details": [
     "Bug fixes and improvements."
   ]
