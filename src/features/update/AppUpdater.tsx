@@ -18,6 +18,8 @@ const APK_MIME_TYPE = 'application/vnd.android.package-archive';
 const FLAG_GRANT_READ_URI_PERMISSION = 1;
 const FLAG_ACTIVITY_NEW_TASK = 0x10000000;
 const UPDATE_APK_FILE = `${FileSystem.documentDirectory ?? ''}app-update.apk`;
+const INSTALL_PACKAGE_ACTION = 'android.intent.action.INSTALL_PACKAGE';
+const VIEW_ACTION = 'android.intent.action.VIEW';
 
 type RemoteVersionManifest = {
   version?: string;
@@ -68,11 +70,7 @@ export function AppUpdater({
 
       try {
         const contentUri = await FileSystem.getContentUriAsync(fileUri);
-        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-          data: contentUri,
-          type: APK_MIME_TYPE,
-          flags: FLAG_GRANT_READ_URI_PERMISSION | FLAG_ACTIVITY_NEW_TASK,
-        });
+        await launchPackageInstaller(contentUri, packageName);
       } catch (caught) {
         if (!openSettingsOnFailure) {
           throw caught;
@@ -276,6 +274,24 @@ function getPackageName() {
   const androidConfig = Constants.expoConfig?.android as { package?: string } | undefined;
 
   return Constants.applicationId ?? androidConfig?.package ?? 'com.timelogs.presence';
+}
+
+async function launchPackageInstaller(contentUri: string, packageName: string) {
+  const params = {
+    data: contentUri,
+    type: APK_MIME_TYPE,
+    flags: FLAG_GRANT_READ_URI_PERMISSION | FLAG_ACTIVITY_NEW_TASK,
+    extra: {
+      'android.intent.extra.INSTALLER_PACKAGE_NAME': packageName,
+      'android.intent.extra.RETURN_RESULT': true,
+    },
+  };
+
+  try {
+    await IntentLauncher.startActivityAsync(INSTALL_PACKAGE_ACTION, params);
+  } catch {
+    await IntentLauncher.startActivityAsync(VIEW_ACTION, params);
+  }
 }
 
 function compareVersions(candidate: string, current: string) {
