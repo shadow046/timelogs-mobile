@@ -22,7 +22,10 @@ type MotionState = {
   downSeen: boolean;
 };
 
+type CapturePhase = 'detecting' | 'holding' | 'counting';
+
 const verticalMoveRatio = 0.045;
+const holdSteadySeconds = 3;
 const captureCountdownSeconds = 5;
 
 export function NativeSelfieCapture({ active, busy, onCaptured, onError }: SelfieCaptureProps) {
@@ -37,11 +40,13 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
   const [layout, setLayout] = useState<GuideLayout>({ width: 0, height: 0 });
   const [instruction, setInstruction] = useState('Center your face in the guide.');
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [capturePhase, setCapturePhase] = useState<CapturePhase>('detecting');
   const [faceCentered, setFaceCentered] = useState(false);
   const motionRef = useRef<MotionState>({ baselineY: null, upSeen: false, downSeen: false });
   const activeRef = useRef(active);
   const captureScheduledRef = useRef(false);
   const captureStartedRef = useRef(false);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const captureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -50,6 +55,9 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
   }, [active]);
 
   useEffect(() => () => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+    }
     if (captureTimerRef.current) {
       clearTimeout(captureTimerRef.current);
     }
@@ -76,6 +84,7 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
     } catch (caught) {
       captureScheduledRef.current = false;
       captureStartedRef.current = false;
+      setCapturePhase('detecting');
       setCountdown(null);
       onError(caught instanceof Error ? caught.message : 'Failed to capture selfie.');
       setInstruction('Center your face in the guide.');
@@ -88,25 +97,33 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
     }
 
     captureScheduledRef.current = true;
-    setInstruction('Hold still.');
-    setCountdown(captureCountdownSeconds);
-    countdownIntervalRef.current = setInterval(() => {
-      setCountdown((current) => {
-        if (current === null || current <= 1) {
-          if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
+    setCapturePhase('holding');
+    setFaceCentered(true);
+    setInstruction('Hold steady. Face the camera.');
+    setCountdown(null);
+
+    holdTimerRef.current = setTimeout(() => {
+      setCapturePhase('counting');
+      setInstruction('Hold steady.');
+      setCountdown(captureCountdownSeconds);
+      countdownIntervalRef.current = setInterval(() => {
+        setCountdown((current) => {
+          if (current === null || current <= 1) {
+            if (countdownIntervalRef.current) {
+              clearInterval(countdownIntervalRef.current);
+              countdownIntervalRef.current = null;
+            }
+
+            return current;
           }
 
-          return current === null ? null : 0;
-        }
-
-        return current - 1;
-      });
-    }, 1000);
-    captureTimerRef.current = setTimeout(() => {
-      void captureSelfie();
-    }, captureCountdownSeconds * 1000);
+          return current - 1;
+        });
+      }, 1000);
+      captureTimerRef.current = setTimeout(() => {
+        void captureSelfie();
+      }, captureCountdownSeconds * 1000);
+    }, holdSteadySeconds * 1000);
   }, [captureSelfie]);
 
   const handleFacesDetected = useCallback(
@@ -192,6 +209,11 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
     ),
   );
 
+  const cameraOutputs = useMemo(
+    () => (capturePhase === 'detecting' ? [faceOutput, photoOutput] : [photoOutput]),
+    [capturePhase, faceOutput, photoOutput],
+  );
+
   if (!cameraPermission.hasPermission) {
     return (
       <View style={styles.permissionBox}>
@@ -218,7 +240,7 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
           device={device}
           isActive={active && !busy}
           mirrorMode="on"
-          outputs={[faceOutput, photoOutput]}
+          outputs={cameraOutputs}
           resizeMode="cover"
           style={StyleSheet.absoluteFill}
         />
