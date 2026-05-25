@@ -33,17 +33,9 @@ export function useAttendanceFlow(token: string) {
       const snapshot = token
         ? await apiClient.resolveLocation(token, currentCoordinates)
         : null;
-      const readableAddress = snapshot && !isCoordinateAddress(snapshot.address)
-        ? snapshot.address
-        : await geolocationService.getReadableAddress(currentCoordinates);
       setCoordinates(currentCoordinates);
       setGeofence(result);
-      setLocationSnapshot(snapshot
-        ? {
-            ...snapshot,
-            address: readableAddress ?? snapshot.address,
-          }
-        : null);
+      setLocationSnapshot(snapshot);
 
       setMessage('Location captured. Submit attendance evidence.');
       setStep('upload');
@@ -97,6 +89,7 @@ export function useAttendanceFlow(token: string) {
         coordinates,
         evidence,
         locationAddress: locationSnapshot?.address,
+        capturedAt: new Date().toISOString(),
         challengeType: challenge.type,
         deviceInfo: deviceInfoService.getDeviceInfo(),
       });
@@ -142,8 +135,4 @@ export function useAttendanceFlow(token: string) {
     step,
     submit,
   };
-}
-
-function isCoordinateAddress(address: string) {
-  return /^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(address.trim());
 }

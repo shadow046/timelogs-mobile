@@ -22,8 +22,14 @@ class LaravelUploadService implements UploadService {
     const formData = new FormData();
     formData.append('latitude', String(submission.coordinates.latitude));
     formData.append('longitude', String(submission.coordinates.longitude));
+    if (submission.coordinates.accuracyMeters !== undefined && submission.coordinates.accuracyMeters !== null) {
+      formData.append('accuracy', String(submission.coordinates.accuracyMeters));
+    }
     if (submission.locationAddress) {
       formData.append('location_address', submission.locationAddress);
+    }
+    if (submission.capturedAt) {
+      formData.append('captured_at', submission.capturedAt);
     }
     formData.append('challenge_type', submission.challengeType);
     formData.append('device_name', submission.deviceInfo.deviceName);

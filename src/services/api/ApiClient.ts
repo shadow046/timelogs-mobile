@@ -1,4 +1,5 @@
 import { appConfig } from '../../config/appConfig';
+import { Coordinates } from '../../types/attendance';
 
 export type LoginResponse = {
   token: string;
@@ -13,6 +14,7 @@ export type AttendanceLog = {
   id: number;
   client_name: string;
   location_address: string | null;
+  accuracy: number | null;
   challenge_type: string;
   device_name: string | null;
   device_os: string | null;
@@ -22,10 +24,11 @@ export type AttendanceLog = {
 };
 
 export type LocationSnapshot = {
+  lat: number;
+  lng: number;
+  accuracy: number | null;
   address: string;
-  map_image_data_uri: string | null;
-  map_url: string | null;
-  map_available: boolean;
+  raw?: unknown;
 };
 
 export class ApiClient {
@@ -70,12 +73,15 @@ export class ApiClient {
 
   async resolveLocation(
     token: string,
-    coordinates: { latitude: number; longitude: number },
+    coordinates: Coordinates,
   ): Promise<LocationSnapshot> {
     const params = new URLSearchParams({
       latitude: String(coordinates.latitude),
       longitude: String(coordinates.longitude),
     });
+    if (coordinates.accuracyMeters !== undefined && coordinates.accuracyMeters !== null) {
+      params.set('accuracy', String(coordinates.accuracyMeters));
+    }
     const response = await fetch(`${this.baseUrl}/location/resolve?${params.toString()}`, {
       headers: {
         Accept: 'application/json',

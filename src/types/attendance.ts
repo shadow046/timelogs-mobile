@@ -45,6 +45,7 @@ export type TimeInSubmission = {
   evidence: EvidenceCapture;
   coordinates: Coordinates;
   locationAddress?: string | null;
+  capturedAt?: string;
   challengeType: ChallengeType;
   deviceInfo: DeviceInfo;
 };

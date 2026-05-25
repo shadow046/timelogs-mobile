@@ -4,7 +4,6 @@ import { Coordinates, GeofenceResult } from '../../types/attendance';
 
 export interface GeolocationService {
   getCurrentCoordinates(): Promise<Coordinates>;
-  getReadableAddress(coordinates: Coordinates): Promise<string | null>;
   validateGeofence(coordinates: Coordinates): GeofenceResult;
 }
 
@@ -25,20 +24,6 @@ class ExpoGeolocationService implements GeolocationService {
       longitude: location.coords.longitude,
       accuracyMeters: location.coords.accuracy,
     };
-  }
-
-  async getReadableAddress(coordinates: Coordinates): Promise<string | null> {
-    const addresses = await Location.reverseGeocodeAsync({
-      latitude: coordinates.latitude,
-      longitude: coordinates.longitude,
-    });
-    const address = addresses[0];
-
-    if (!address) {
-      return null;
-    }
-
-    return formatReadableAddress(address);
   }
 
   validateGeofence(coordinates: Coordinates): GeofenceResult {
@@ -62,35 +47,6 @@ class ExpoGeolocationService implements GeolocationService {
 }
 
 export const geolocationService: GeolocationService = new ExpoGeolocationService();
-
-function formatReadableAddress(address: Location.LocationGeocodedAddress) {
-  const streetLine = joinUniqueParts([
-    address.name,
-    address.street,
-  ]);
-  const cityLine = joinUniqueParts([
-    address.district,
-    address.city,
-    address.subregion,
-    address.region,
-  ]);
-  const readableAddress = joinUniqueParts([streetLine, cityLine]);
-
-  return readableAddress || null;
-}
-
-function joinUniqueParts(parts: Array<string | null | undefined>) {
-  const normalizedParts = parts
-    .map((part) => part?.trim())
-    .filter((part): part is string => Boolean(part));
-  const uniqueParts = normalizedParts.filter((part, index) => {
-    const normalizedPart = part.toLowerCase();
-
-    return normalizedParts.findIndex((candidate) => candidate.toLowerCase() === normalizedPart) === index;
-  });
-
-  return uniqueParts.join(', ');
-}
 
 function distanceBetweenMeters(
   fromLatitude: number,

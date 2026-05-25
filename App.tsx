@@ -3,7 +3,6 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ComponentType, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -13,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { PrimaryButton } from './src/components/PrimaryButton';
 import { appConfig } from './src/config/appConfig';
 import { SelfieCaptureProps } from './src/features/attendance/SelfieCaptureTypes';
@@ -234,23 +234,39 @@ export default function App() {
 
             {flow.locationSnapshot ? (
               <View style={styles.locationCard}>
-                {flow.locationSnapshot.map_image_data_uri || flow.locationSnapshot.map_url ? (
-                  <Image
-                    resizeMode="cover"
-                    source={{
-                      uri: flow.locationSnapshot.map_image_data_uri ?? flow.locationSnapshot.map_url ?? '',
-                    }}
-                    style={styles.mapPreview}
+                <MapView
+                  initialRegion={{
+                    latitude: flow.locationSnapshot.lat,
+                    longitude: flow.locationSnapshot.lng,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  }}
+                  mapType={Platform.OS === 'android' ? 'none' : 'standard'}
+                  pointerEvents="none"
+                  scrollEnabled={false}
+                  style={styles.mapPreview}
+                  zoomEnabled={false}
+                >
+                  <UrlTile
+                    maximumZ={19}
+                    urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
-                ) : (
-                  <View style={styles.mapFallback}>
-                    <Text style={styles.status}>Map preview needs GOOGLE_MAPS_API_KEY on the backend.</Text>
-                  </View>
-                )}
+                  <Marker
+                    coordinate={{
+                      latitude: flow.locationSnapshot.lat,
+                      longitude: flow.locationSnapshot.lng,
+                    }}
+                  />
+                </MapView>
                 <Text style={styles.locationLabel}>Captured Location</Text>
                 <View style={styles.addressBox}>
                   <Text style={styles.body}>{flow.locationSnapshot.address}</Text>
                 </View>
+                {flow.locationSnapshot.accuracy !== null ? (
+                  <Text style={styles.status}>
+                    Accuracy: {Math.round(flow.locationSnapshot.accuracy)} m
+                  </Text>
+                ) : null}
                 <Text style={styles.status}>This address will be saved with your time-in evidence.</Text>
               </View>
             ) : null}
@@ -483,6 +499,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAF1EC',
     borderRadius: 6,
     height: 150,
+    overflow: 'hidden',
     width: '100%',
   },
   mapFallback: {
