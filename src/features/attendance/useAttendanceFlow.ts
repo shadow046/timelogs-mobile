@@ -37,7 +37,7 @@ export function useAttendanceFlow(token: string) {
       setGeofence(result);
       setLocationSnapshot(snapshot);
 
-      setMessage('Location captured. Submit attendance evidence.');
+      setMessage('Location captured. Review the map before submitting.');
       setStep('upload');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Location check failed.');

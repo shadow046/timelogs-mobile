@@ -280,7 +280,7 @@ function TimeLogsApp() {
 
             {flow.step === 'gps' ? (
               <PrimaryButton
-                label="Get location"
+                label={flow.busy ? 'Getting location...' : 'Get location'}
                 onPress={flow.checkLocation}
                 disabled={!token || flow.busy}
               />
@@ -335,11 +335,18 @@ function TimeLogsApp() {
             ) : null}
 
             {flow.step === 'upload' ? (
-              <PrimaryButton
-                label="Submit time-in"
-                onPress={flow.submit}
-                disabled={!flow.canSubmit || flow.busy}
-              />
+              <>
+                <PrimaryButton
+                  label={flow.busy ? 'Getting location...' : 'Get location again'}
+                  onPress={flow.checkLocation}
+                  disabled={!token || flow.busy}
+                />
+                <PrimaryButton
+                  label="Submit time-in"
+                  onPress={flow.submit}
+                  disabled={!flow.canSubmit || flow.busy}
+                />
+              </>
             ) : null}
 
             {flow.step === 'done' ? <PrimaryButton label="Start another time-in" onPress={flow.reset} /> : null}
