@@ -29,6 +29,19 @@ OUTPUT_DIR="$PROJECT_ROOT/APK"
 LATEST_INFO_FILE="$OUTPUT_DIR/latest.txt"
 LATEST_APK_NAME="TimeLogsPresence.apk"
 APP_LABEL="TimeLogs Presence"
+UPDATE_MANIFEST_NAME="mobile.json"
+UPDATE_APK_PATH="/updates/$LATEST_APK_NAME"
+UPDATE_PUBLIC_BASE_URL="${UPDATE_PUBLIC_BASE_URL:-https://timelogs.ideaserv.online}"
+
+if [[ -n "${UPDATE_PUBLISH_TARGET:-}" ]]; then
+  DEFAULT_UPDATE_PUBLISH_TARGET="$UPDATE_PUBLISH_TARGET"
+elif [[ -d "$PROJECT_ROOT/backend/public" ]]; then
+  DEFAULT_UPDATE_PUBLISH_TARGET="$PROJECT_ROOT/backend/public/updates"
+else
+  DEFAULT_UPDATE_PUBLISH_TARGET=""
+fi
+
+DEFAULT_UPDATE_PUBLISH_TARGET="root@timelogs.ideaserv.online:/opt/TimeLogs/backend/public/updates"
 
 # export PATH="/usr/bin:/bin:$PATH"
 export PATH="$HOME/.nvm/versions/node/v22.22.3/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
@@ -159,6 +172,67 @@ get_sha256() {
   sha256sum "$file_path" 2>/dev/null | awk '{print $1}'
 }
 
+write_update_manifest() {
+  local manifest_path="$1"
+  local details="$2"
+  local mandatory="$3"
+  local apk_size_bytes
+
+  apk_size_bytes=$(stat -c '%s' "$OUTPUT_DIR/$LATEST_APK_NAME" 2>/dev/null || echo 0)
+
+  UPDATE_MANIFEST_PATH="$manifest_path" \
+    UPDATE_MANIFEST_DETAILS="$details" \
+    UPDATE_MANIFEST_MANDATORY="$mandatory" \
+    UPDATE_MANIFEST_VERSION="$VERSION" \
+    UPDATE_MANIFEST_VERSION_CODE="$VERSION_CODE" \
+    UPDATE_MANIFEST_APK_PATH="$UPDATE_APK_PATH" \
+    UPDATE_MANIFEST_APK_URL="$UPDATE_PUBLIC_BASE_URL$UPDATE_APK_PATH" \
+    UPDATE_MANIFEST_APK_SHA256="$APK_SHA256" \
+    UPDATE_MANIFEST_APK_SIZE_BYTES="$apk_size_bytes" \
+    "$NODE_BIN" <<'NODE'
+const fs = require('fs');
+const path = process.env.UPDATE_MANIFEST_PATH;
+const details = (process.env.UPDATE_MANIFEST_DETAILS || '')
+  .split('|')
+  .map((item) => item.trim())
+  .filter(Boolean);
+
+const manifest = {
+  latest_version: process.env.UPDATE_MANIFEST_VERSION,
+  latest_version_code: Number(process.env.UPDATE_MANIFEST_VERSION_CODE),
+  apk_path: process.env.UPDATE_MANIFEST_APK_PATH,
+  apk_url: process.env.UPDATE_MANIFEST_APK_URL,
+  mandatory: process.env.UPDATE_MANIFEST_MANDATORY === 'true',
+  published_at: new Date().toISOString(),
+  apk_sha256: process.env.UPDATE_MANIFEST_APK_SHA256,
+  apk_size_bytes: Number(process.env.UPDATE_MANIFEST_APK_SIZE_BYTES),
+  details: details.length ? details : ['Bug fixes and improvements.'],
+};
+
+fs.writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n');
+NODE
+}
+
+publish_update() {
+  local target="$1"
+  local manifest_path="$OUTPUT_DIR/$UPDATE_MANIFEST_NAME"
+
+  write_update_manifest "$manifest_path" "$UPDATE_DETAILS" "$UPDATE_MANDATORY"
+
+  if [[ "$target" == *:* ]]; then
+    require_command ssh
+    require_command rsync
+    local remote_dir="$target"
+    local remote_host="${remote_dir%%:*}"
+    local remote_path="${remote_dir#*:}"
+    ssh "$remote_host" "mkdir -p '$remote_path'"
+    rsync -av "$OUTPUT_DIR/$LATEST_APK_NAME" "$OUTPUT_DIR/$VERSIONED_APK_NAME" "$manifest_path" "$remote_dir/"
+  else
+    mkdir -p "$target"
+    cp "$OUTPUT_DIR/$LATEST_APK_NAME" "$OUTPUT_DIR/$VERSIONED_APK_NAME" "$manifest_path" "$target/"
+  fi
+}
+
 require_command() {
   local command_name="$1"
   if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -190,6 +264,10 @@ VERSION="$(read_json_value 'app.expo.version')"
 SUGGESTED_INCREMENT="$(increment_version "$VERSION")"
 SHOULD_CLEAN=false
 SHOULD_PREBUILD=false
+SHOULD_PUBLISH_UPDATE="${PUBLISH_UPDATE:-false}"
+UPDATE_PUBLISH_TARGET="${UPDATE_PUBLISH_TARGET:-$DEFAULT_UPDATE_PUBLISH_TARGET}"
+UPDATE_DETAILS="${UPDATE_DETAILS:-Bug fixes and improvements.}"
+UPDATE_MANDATORY="${UPDATE_MANDATORY:-false}"
 
 if [[ -t 0 ]]; then
   print_header "========== TimeLogs APK Builder =========="
@@ -232,6 +310,22 @@ if [[ -t 0 ]]; then
   read -r -p "Clean build? [y/N]: " CLEAN_CHOICE
   case "${CLEAN_CHOICE:-N}" in
     [yY]|[yY][eE][sS]) SHOULD_CLEAN=true ;;
+  esac
+
+  echo
+  read -r -p "Publish APK update manifest after build? [y/N]: " PUBLISH_CHOICE
+  case "${PUBLISH_CHOICE:-N}" in
+    [yY]|[yY][eE][sS])
+      SHOULD_PUBLISH_UPDATE=true
+      read -r -p "Publish target [$UPDATE_PUBLISH_TARGET]: " CUSTOM_PUBLISH_TARGET
+      UPDATE_PUBLISH_TARGET="${CUSTOM_PUBLISH_TARGET:-$UPDATE_PUBLISH_TARGET}"
+      read -r -p "Release details (use | for multiple lines) [$UPDATE_DETAILS]: " CUSTOM_UPDATE_DETAILS
+      UPDATE_DETAILS="${CUSTOM_UPDATE_DETAILS:-$UPDATE_DETAILS}"
+      read -r -p "Mandatory update? [y/N]: " MANDATORY_CHOICE
+      case "${MANDATORY_CHOICE:-N}" in
+        [yY]|[yY][eE][sS]) UPDATE_MANDATORY=true ;;
+      esac
+      ;;
   esac
 fi
 
@@ -329,6 +423,19 @@ Versioned APK SHA-256: ${VERSIONED_APK_SHA256:-Unavailable}
 Signer SHA-256: ${SIGNER_SHA256:-Unavailable}
 Signer SHA-1: ${SIGNER_SHA1:-Unavailable}
 EOF
+
+if [[ "$SHOULD_PUBLISH_UPDATE" == true ]]; then
+  if [[ -z "$UPDATE_PUBLISH_TARGET" ]]; then
+    print_error "Update publish target is empty. Set UPDATE_PUBLISH_TARGET or run from the full project root."
+    exit 1
+  fi
+
+  print_header "Publishing APK update..."
+  publish_update "$UPDATE_PUBLISH_TARGET"
+  print_success "Update published"
+  print_info "Target:      ${COLOR_BOLD}$UPDATE_PUBLISH_TARGET${COLOR_RESET}"
+  print_info "Manifest:    ${COLOR_BOLD}$UPDATE_PUBLISH_TARGET/$UPDATE_MANIFEST_NAME${COLOR_RESET}"
+fi
 
 echo
 print_success "Local build ready"
