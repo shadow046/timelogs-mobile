@@ -28,6 +28,8 @@ export type LocationSnapshot = {
   lng: number;
   accuracy: number | null;
   address: string;
+  map_image_data_uri: string | null;
+  map_url: string | null;
   raw?: unknown;
 };
 
