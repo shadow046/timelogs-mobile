@@ -1,8 +1,8 @@
-TimeLogs Presence APK Build
+FieldClock APK Build
 ===========================
-Version: 1.1.15
-Version Code: 1011500
-Built At: 2026-05-26 10:02:40 PST
+Version: 1.1.19
+Version Code: 1011900
+Built At: 2026-05-26 13:49:31 PST
 Built By: root
 Build Host: ubuntu
 Project Root: /opt/timelogs-mobile
@@ -11,15 +11,15 @@ Build Path: /opt/timelogs-mobile/android/app/build/outputs/apk/release
 Build Type: Release
 Clean Build: false
 Expo Prebuild: false
-App Label: TimeLogs Presence
+App Label: FieldClock
 Package Name: com.timelogs.presence
 Min SDK: 24
 Target SDK: 36
-Latest APK: TimeLogsPresence.apk
-Latest APK Size: 156044562 bytes / 148.82 MB
-Latest APK SHA-256: 059e0d5c29e19672d5bcb7cce1474752ae65d4ccc354cf9e371af7d7b0ab675f
-Versioned APK: TimeLogsPresence-1.1.15.apk
-Versioned APK Size: 156044562 bytes / 148.82 MB
-Versioned APK SHA-256: 059e0d5c29e19672d5bcb7cce1474752ae65d4ccc354cf9e371af7d7b0ab675f
+Latest APK: FieldClock.apk
+Latest APK Size: 156297526 bytes / 149.06 MB
+Latest APK SHA-256: 0a64f2fdbc9678b0fd0bb62c193fd696324151c5166773035c92fdfccbdb8853
+Versioned APK: FieldClock-1.1.19.apk
+Versioned APK Size: 156297526 bytes / 149.06 MB
+Versioned APK SHA-256: 0a64f2fdbc9678b0fd0bb62c193fd696324151c5166773035c92fdfccbdb8853
 Signer SHA-256: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c
 Signer SHA-1: 5e8f16062ea3cd2c4a0d547876baa6f38cabf625

@@ -1,14 +1,14 @@
 {
-  "version": "v1.1.15",
+  "version": "v1.1.19",
   "changelog": "Bug fixes and improvements.",
-  "latest_version": "1.1.15",
-  "latest_version_code": 1011500,
-  "apk_path": "/updates/TimeLogsPresence.apk",
-  "apk_url": "https://timelogs.ideaserv.online/updates/TimeLogsPresence.apk",
+  "latest_version": "1.1.19",
+  "latest_version_code": 1011900,
+  "apk_path": "/updates/FieldClock.apk",
+  "apk_url": "https://timelogs.ideaserv.online/updates/FieldClock.apk",
   "mandatory": false,
-  "published_at": "2026-05-26T02:02:40.176Z",
-  "apk_sha256": "059e0d5c29e19672d5bcb7cce1474752ae65d4ccc354cf9e371af7d7b0ab675f",
-  "apk_size_bytes": 156044562,
+  "published_at": "2026-05-26T05:49:31.565Z",
+  "apk_sha256": "0a64f2fdbc9678b0fd0bb62c193fd696324151c5166773035c92fdfccbdb8853",
+  "apk_size_bytes": 156297526,
   "details": [
     "Bug fixes and improvements."
   ]
