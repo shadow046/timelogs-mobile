@@ -27,6 +27,7 @@ type CapturePhase = 'detecting' | 'holding' | 'counting';
 const verticalMoveRatio = 0.045;
 const holdSteadySeconds = 3;
 const captureCountdownSeconds = 5;
+const finalCaptureDelayMs = 650;
 
 export function NativeSelfieCapture({ active, busy, onCaptured, onError }: SelfieCaptureProps) {
   const device = useCameraDevice('front');
@@ -44,15 +45,21 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
   const [faceCentered, setFaceCentered] = useState(false);
   const motionRef = useRef<MotionState>({ baselineY: null, upSeen: false, downSeen: false });
   const activeRef = useRef(active);
+  const busyRef = useRef(busy);
   const captureScheduledRef = useRef(false);
   const captureStartedRef = useRef(false);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const captureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finalCaptureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     activeRef.current = active;
   }, [active]);
+
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
 
   useEffect(() => () => {
     if (holdTimerRef.current) {
@@ -61,13 +68,16 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
     if (captureTimerRef.current) {
       clearTimeout(captureTimerRef.current);
     }
+    if (finalCaptureTimerRef.current) {
+      clearTimeout(finalCaptureTimerRef.current);
+    }
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
     }
   }, []);
 
   const captureSelfie = useCallback(async () => {
-    if (captureStartedRef.current || busy || !activeRef.current) {
+    if (captureStartedRef.current || busyRef.current || !activeRef.current) {
       return;
     }
 
@@ -82,14 +92,17 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
       };
       onCaptured(capture);
     } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Failed to capture selfie.';
+      const cameraClosed = message.toLowerCase().includes('camera is closed');
+
       captureScheduledRef.current = false;
       captureStartedRef.current = false;
       setCapturePhase('detecting');
       setCountdown(null);
-      onError(caught instanceof Error ? caught.message : 'Failed to capture selfie.');
-      setInstruction('Center your face in the guide.');
+      onError(cameraClosed ? 'Camera was not ready. Please try the selfie again.' : message);
+      setInstruction(cameraClosed ? 'Keep the camera open and try again.' : 'Center your face in the guide.');
     }
-  }, [busy, onCaptured, onError, photoOutput]);
+  }, [onCaptured, onError, photoOutput]);
 
   const scheduleCaptureSelfie = useCallback(() => {
     if (captureScheduledRef.current || captureStartedRef.current) {
@@ -121,7 +134,11 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
         });
       }, 1000);
       captureTimerRef.current = setTimeout(() => {
-        void captureSelfie();
+        setInstruction('Taking photo...');
+        setCountdown(null);
+        finalCaptureTimerRef.current = setTimeout(() => {
+          void captureSelfie();
+        }, finalCaptureDelayMs);
       }, captureCountdownSeconds * 1000);
     }, holdSteadySeconds * 1000);
   }, [captureSelfie]);
@@ -209,10 +226,7 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
     ),
   );
 
-  const cameraOutputs = useMemo(
-    () => (capturePhase === 'detecting' ? [faceOutput, photoOutput] : [photoOutput]),
-    [capturePhase, faceOutput, photoOutput],
-  );
+  const cameraOutputs = useMemo(() => [faceOutput, photoOutput], [faceOutput, photoOutput]);
 
   if (!cameraPermission.hasPermission) {
     return (
