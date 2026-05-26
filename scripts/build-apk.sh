@@ -24,11 +24,12 @@ fi
 ANDROID_ROOT="$MOBILE_ROOT/android"
 APP_CONFIG_PATH="$MOBILE_ROOT/app.json"
 ANDROID_BUILD_GRADLE="$ANDROID_ROOT/app/build.gradle"
+ANDROID_STRINGS_PATH="$ANDROID_ROOT/app/src/main/res/values/strings.xml"
 BUILD_PATH="$ANDROID_ROOT/app/build/outputs/apk/release"
 OUTPUT_DIR="$PROJECT_ROOT/APK"
 LATEST_INFO_FILE="$OUTPUT_DIR/latest.txt"
-LATEST_APK_NAME="TimeLogsPresence.apk"
-APP_LABEL="TimeLogs Presence"
+LATEST_APK_NAME="FieldClock.apk"
+APP_LABEL="FieldClock"
 UPDATE_MANIFEST_NAME="mobile.json"
 UPDATE_APK_PATH="/updates/$LATEST_APK_NAME"
 UPDATE_PUBLIC_BASE_URL="${UPDATE_PUBLIC_BASE_URL:-https://timelogs.ideaserv.online}"
@@ -277,8 +278,13 @@ UPDATE_PUBLISH_TARGET="${UPDATE_PUBLISH_TARGET:-$DEFAULT_UPDATE_PUBLISH_TARGET}"
 UPDATE_DETAILS="${UPDATE_DETAILS:-Bug fixes and improvements.}"
 UPDATE_MANDATORY="${UPDATE_MANDATORY:-false}"
 
+if [[ -f "$ANDROID_STRINGS_PATH" ]] && ! grep -q "<string name=\"app_name\">${APP_LABEL}</string>" "$ANDROID_STRINGS_PATH"; then
+  print_warning "Android app label is stale. Expo prebuild will run to refresh native branding."
+  SHOULD_PREBUILD=true
+fi
+
 if [[ -t 0 ]]; then
-  print_header "========== TimeLogs APK Builder =========="
+  print_header "========== FieldClock APK Builder =========="
   print_info "Current version: ${COLOR_BOLD}$VERSION${COLOR_RESET}"
   echo
   print_header "Choose version option:"
@@ -338,7 +344,7 @@ if [[ -t 0 ]]; then
 fi
 
 VERSION_CODE="$(calculate_version_code "$VERSION")"
-VERSIONED_APK_NAME="TimeLogsPresence-$VERSION.apk"
+VERSIONED_APK_NAME="FieldClock-$VERSION.apk"
 
 print_info "Selected version: ${COLOR_BOLD}$VERSION${COLOR_RESET}"
 print_info "Computed version code: ${COLOR_BOLD}$VERSION_CODE${COLOR_RESET}"
@@ -405,7 +411,7 @@ BUILD_USER="$(whoami 2>/dev/null || echo Unavailable)"
 BUILD_HOST="$(hostname 2>/dev/null || echo Unavailable)"
 
 cat > "$LATEST_INFO_FILE" <<EOF
-TimeLogs Presence APK Build
+FieldClock APK Build
 ===========================
 Version: $VERSION
 Version Code: $VERSION_CODE

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "TimeLogs Presence",
-    "slug": "timelogs-presence",
+    "name": "FieldClock",
+    "slug": "fieldclock",
     "version": "1.1.15",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,8 +15,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "TimeLogs captures a selfie photo as attendance evidence.",
-        "NSLocationWhenInUseUsageDescription": "TimeLogs verifies that employees are within the allowed time-in area."
+        "NSCameraUsageDescription": "FieldClock captures a selfie photo as attendance evidence.",
+        "NSLocationWhenInUseUsageDescription": "FieldClock records employee location for attendance evidence."
       }
     },
     "android": {
@@ -30,7 +30,7 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#001a54"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

@@ -142,7 +142,7 @@ function TimeLogsApp() {
         >
           <ScrollView contentContainerStyle={[styles.content, styles.loginContent]}>
             {/* <View style={styles.header}>
-              <Text style={styles.title}>TimeLogs</Text>
+              <Text style={styles.title}>FieldClock</Text>
               <Text style={styles.subtitle}>Employee attendance and proof-of-presence.</Text>
             </View> */}
 
