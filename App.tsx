@@ -219,13 +219,15 @@ function TimeLogsApp() {
             </View>
 
             <View style={styles.tableHeader}>
-              <Text style={[styles.tableCell, styles.timeCell]}>Date / Time</Text>
+              <Text style={[styles.tableCell, styles.dateCell]}>Date</Text>
+              <Text style={[styles.tableCell, styles.timeCell]}>Time</Text>
               <Text style={[styles.tableCell, styles.locationCell]}>Location</Text>
             </View>
             <ScrollView nestedScrollEnabled style={styles.logsScroll}>
               {logs.map((log) => (
                 <View key={log.id} style={styles.tableRow}>
-                  <Text style={[styles.tableCell, styles.timeCell]}>{formatDateTime(log.created_at)}</Text>
+                  <Text style={[styles.tableCell, styles.dateCell]}>{log.txndate ?? '-'}</Text>
+                  <Text style={[styles.tableCell, styles.timeCell]}>{log.txntime ?? '-'}</Text>
                   <Text style={[styles.tableCell, styles.locationCell]}>
                     {log.location_address ?? formatCoordinates(log.latitude, log.longitude)}
                   </Text>
@@ -363,19 +365,6 @@ function TimeLogsApp() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) {
-    return '-';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
 }
 
 function formatCoordinates(latitude: number, longitude: number) {
@@ -575,8 +564,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
-  timeCell: {
+  dateCell: {
     flex: 1.1,
+  },
+  timeCell: {
+    flex: 0.9,
   },
   statusCell: {
     flex: 0.9,

@@ -32,6 +32,9 @@ export type AttendanceLog = {
   device_os: string | null;
   latitude: number;
   longitude: number;
+  txndate: string | null;
+  txntime: string | null;
+  captured_at: string | null;
   created_at: string | null;
 };
 
