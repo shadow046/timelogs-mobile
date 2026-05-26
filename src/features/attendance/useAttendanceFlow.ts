@@ -8,11 +8,11 @@ import { uploadService } from '../../services/upload/UploadService';
 import { apiClient, LocationSnapshot } from '../../services/api/ApiClient';
 import { Challenge, Coordinates, EvidenceCapture, GeofenceResult } from '../../types/attendance';
 
-type FlowStep = 'gps' | 'camera' | 'upload' | 'done';
+type FlowStep = 'idle' | 'gps' | 'camera' | 'upload' | 'done';
 const EVIDENCE_TTL_MS = 5 * 60 * 1000;
 
 export function useAttendanceFlow(token: string) {
-  const [step, setStep] = useState<FlowStep>('camera');
+  const [step, setStep] = useState<FlowStep>('idle');
   const [challenge, setChallenge] = useState<Challenge>(() => livenessService.getRandomChallenge());
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [geofence, setGeofence] = useState<GeofenceResult | null>(null);
@@ -27,7 +27,7 @@ export function useAttendanceFlow(token: string) {
   const canSubmit = useMemo(() => Boolean(token && coordinates && evidence), [coordinates, evidence, token]);
 
   useEffect(() => {
-    if (!selfieCapturedAt || step === 'camera' || step === 'done') {
+    if (!selfieCapturedAt || step === 'idle' || step === 'camera' || step === 'done') {
       return;
     }
 
@@ -157,7 +157,7 @@ export function useAttendanceFlow(token: string) {
   }
 
   function reset() {
-    setStep('camera');
+    setStep('idle');
     setChallenge(livenessService.getRandomChallenge());
     setCoordinates(null);
     setGeofence(null);
@@ -170,7 +170,7 @@ export function useAttendanceFlow(token: string) {
   }
 
   function resetExpiredFlow(expiredMessage: string) {
-    setStep('camera');
+    setStep('idle');
     setChallenge(livenessService.getRandomChallenge());
     setCoordinates(null);
     setGeofence(null);
@@ -180,6 +180,19 @@ export function useAttendanceFlow(token: string) {
     setLocationCapturedAt(null);
     setMessage('Ready to take your selfie.');
     setError(expiredMessage);
+  }
+
+  function startTimeIn() {
+    setStep('camera');
+    setChallenge(livenessService.getRandomChallenge());
+    setCoordinates(null);
+    setGeofence(null);
+    setLocationSnapshot(null);
+    setEvidence(null);
+    setSelfieCapturedAt(null);
+    setLocationCapturedAt(null);
+    setMessage('Ready to take your selfie.');
+    setError(null);
   }
 
   function hasExpired(capturedAt: number) {
@@ -205,6 +218,7 @@ export function useAttendanceFlow(token: string) {
     recordEvidence,
     reset,
     setErrorMessage,
+    startTimeIn,
     step,
     submit,
   };

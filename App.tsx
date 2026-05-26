@@ -278,6 +278,14 @@ function TimeLogsApp() {
 
             {flow.busy ? <ActivityIndicator color="#126C67" /> : null}
 
+            {flow.step === 'idle' ? (
+              <PrimaryButton
+                label="Start time-in"
+                onPress={flow.startTimeIn}
+                disabled={flow.busy}
+              />
+            ) : null}
+
             {flow.step === 'gps' ? (
               <PrimaryButton
                 label={flow.busy ? 'Getting location...' : 'Get location'}
@@ -349,7 +357,7 @@ function TimeLogsApp() {
               </>
             ) : null}
 
-            {flow.step === 'done' ? <PrimaryButton label="Start another time-in" onPress={flow.reset} /> : null}
+            {flow.step === 'done' ? <PrimaryButton label="Start another time-in" onPress={flow.startTimeIn} /> : null}
             </View>
           ) : null}
         </ScrollView>
