@@ -24,7 +24,12 @@ type MotionState = {
 
 type CapturePhase = 'detecting' | 'holding' | 'counting';
 
-const verticalMoveRatio = 0.045;
+const guideCenterYRatio = 0.44;
+const guideRadiusXRatio = 0.38;
+const guideRadiusYRatio = 0.29;
+const guideGraceRatio = 1.45;
+const upMoveRatio = 0.04;
+const downMoveRatio = 0.032;
 const holdSteadySeconds = 3;
 const captureCountdownSeconds = 5;
 const finalCaptureDelayMs = 650;
@@ -167,18 +172,19 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
       const centerX = face.bounds.x + face.bounds.width / 2;
       const centerY = face.bounds.y + face.bounds.height / 2;
       const guideCenterX = layout.width / 2;
-      const guideCenterY = layout.height * 0.45;
-      const radiusX = layout.width * 0.33;
-      const radiusY = layout.height * 0.24;
+      const guideCenterY = layout.height * guideCenterYRatio;
+      const radiusX = layout.width * guideRadiusXRatio;
+      const radiusY = layout.height * guideRadiusYRatio;
       const normalizedDistance =
         ((centerX - guideCenterX) * (centerX - guideCenterX)) / (radiusX * radiusX) +
         ((centerY - guideCenterY) * (centerY - guideCenterY)) / (radiusY * radiusY);
-      const faceFits = face.bounds.width >= layout.width * 0.18 && face.bounds.width <= layout.width * 0.7;
+      const faceFits = face.bounds.width >= layout.width * 0.16 && face.bounds.width <= layout.width * 0.84;
       const insideGuide = normalizedDistance <= 1 && faceFits;
+      const insideGuideWithGrace = normalizedDistance <= guideGraceRatio && faceFits;
 
-      setFaceCentered(insideGuide);
+      setFaceCentered(insideGuide || (motionRef.current.upSeen && insideGuideWithGrace));
 
-      if (!insideGuide) {
+      if (!insideGuide && !motionRef.current.upSeen) {
         motionRef.current = { baselineY: null, upSeen: false, downSeen: false };
         setInstruction('Center your face in the guide.');
         return;
@@ -191,13 +197,14 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
         return;
       }
 
-      const threshold = layout.height * verticalMoveRatio;
-      if (centerY < motion.baselineY - threshold) {
+      const upThreshold = layout.height * upMoveRatio;
+      const downThreshold = layout.height * downMoveRatio;
+      if (insideGuide && centerY < motion.baselineY - upThreshold) {
         motion.upSeen = true;
-        setInstruction('Now move down.');
+        setInstruction('Now move down slightly.');
       }
 
-      if (motion.upSeen && centerY > motion.baselineY + threshold) {
+      if (motion.upSeen && insideGuideWithGrace && centerY > motion.baselineY + downThreshold) {
         motion.downSeen = true;
         scheduleCaptureSelfie();
       }
@@ -286,11 +293,11 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
     borderRadius: 999,
     borderWidth: 3,
-    height: '48%',
+    height: '58%',
     opacity: 0.92,
     position: 'absolute',
-    top: '21%',
-    width: '66%',
+    top: '15%',
+    width: '76%',
   },
   faceGuideReady: {
     borderColor: '#35D0A4',
@@ -298,11 +305,11 @@ const styles = StyleSheet.create({
   countdownOverlay: {
     alignItems: 'center',
     alignSelf: 'center',
-    height: '48%',
+    height: '58%',
     justifyContent: 'center',
     position: 'absolute',
-    top: '21%',
-    width: '66%',
+    top: '15%',
+    width: '76%',
   },
   countdownText: {
     color: '#FFFFFF',
