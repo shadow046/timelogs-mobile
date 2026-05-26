@@ -154,6 +154,7 @@ function TimeLogsApp() {
                 autoComplete="username"
                 onChangeText={setLogin}
                 placeholder="Employee Number"
+                placeholderTextColor="#6B7A77"
                 style={styles.input}
                 value={login}
               />
@@ -161,6 +162,7 @@ function TimeLogsApp() {
                 autoComplete="password"
                 onChangeText={setPassword}
                 placeholder="Password"
+                placeholderTextColor="#6B7A77"
                 secureTextEntry
                 style={styles.input}
                 value={password}
