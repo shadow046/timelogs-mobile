@@ -173,7 +173,14 @@ export function AppUpdater({
     setChecking(true);
 
     try {
-      const response = await fetch(manifestUrl, { headers: { Accept: 'application/json' } });
+      const response = await fetch(withCacheBuster(manifestUrl), {
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json',
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache',
+        },
+      });
       if (!response.ok) {
         throw new Error(`Update check failed: ${response.status}`);
       }
@@ -188,7 +195,10 @@ export function AppUpdater({
 
       if (!isUpdateAvailable(manifest, remoteVersion)) {
         if (showUpToDate) {
-          Alert.alert('App is up to date', `Version ${Constants.expoConfig?.version ?? appConfig.appVersion}`);
+          Alert.alert(
+            'App is up to date',
+            `Current: ${currentAppVersionLabel()}\nLatest: ${remoteVersionLabel(manifest, remoteVersion)}`,
+          );
         }
         return;
       }
@@ -256,9 +266,10 @@ export function useAppUpdater() {
 function isUpdateAvailable(manifest: RemoteVersionManifest, remoteVersion: string) {
   const localVersion = Constants.expoConfig?.version ?? appConfig.appVersion;
   const localVersionCode = getLocalVersionCode();
+  const remoteVersionCode = Number(manifest.latest_version_code ?? 0);
 
-  if (manifest.latest_version_code && localVersionCode) {
-    return manifest.latest_version_code > localVersionCode;
+  if (remoteVersionCode > 0 && localVersionCode > 0) {
+    return remoteVersionCode > localVersionCode;
   }
 
   return compareVersions(remoteVersion, localVersion) > 0;
@@ -274,6 +285,25 @@ function getPackageName() {
   const androidConfig = Constants.expoConfig?.android as { package?: string } | undefined;
 
   return Constants.applicationId ?? androidConfig?.package ?? 'com.timelogs.presence';
+}
+
+function withCacheBuster(url: string) {
+  const separator = url.includes('?') ? '&' : '?';
+
+  return `${url}${separator}t=${Date.now()}`;
+}
+
+function currentAppVersionLabel() {
+  const version = Constants.expoConfig?.version ?? appConfig.appVersion;
+  const versionCode = getLocalVersionCode();
+
+  return versionCode ? `${version} (${versionCode})` : version;
+}
+
+function remoteVersionLabel(manifest: RemoteVersionManifest, remoteVersion: string) {
+  const versionCode = Number(manifest.latest_version_code ?? 0);
+
+  return versionCode ? `${remoteVersion} (${versionCode})` : remoteVersion;
 }
 
 async function launchPackageInstaller(contentUri: string, packageName: string) {
