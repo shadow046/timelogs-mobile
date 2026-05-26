@@ -220,22 +220,21 @@ function TimeLogsApp() {
 
             <View style={styles.tableHeader}>
               <Text style={[styles.tableCell, styles.timeCell]}>Date / Time</Text>
-              <Text style={[styles.tableCell, styles.clientCell]}>Client</Text>
               <Text style={[styles.tableCell, styles.locationCell]}>Location</Text>
             </View>
-            {logs.map((log) => (
-              <View key={log.id} style={styles.tableRow}>
-                <Text style={[styles.tableCell, styles.timeCell]}>{formatDateTime(log.created_at)}</Text>
-                <Text style={[styles.tableCell, styles.clientCell]}>{log.client_name}</Text>
-                <Text style={[styles.tableCell, styles.locationCell]}>
-                  {log.location_address ?? formatCoordinates(log.latitude, log.longitude)}
-                </Text>
-              </View>
-            ))}
+            <ScrollView nestedScrollEnabled style={styles.logsScroll}>
+              {logs.map((log) => (
+                <View key={log.id} style={styles.tableRow}>
+                  <Text style={[styles.tableCell, styles.timeCell]}>{formatDateTime(log.created_at)}</Text>
+                  <Text style={[styles.tableCell, styles.locationCell]}>
+                    {log.location_address ?? formatCoordinates(log.latitude, log.longitude)}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
             {logsBusy ? <ActivityIndicator color="#126C67" /> : null}
             <Text style={styles.status}>{logsMessage}</Text>
             <PrimaryButton label="Refresh logs" onPress={() => loadAttendanceLogs()} disabled={logsBusy} />
-            <PrimaryButton label="Go to Time In" onPress={() => setActiveView('timeIn')} />
             </View>
           ) : null}
 
@@ -393,7 +392,9 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: 16,
-    padding: 18,
+    paddingBottom: 56,
+    paddingHorizontal: 18,
+    paddingTop: 18,
   },
   loginContent: {
     flexGrow: 1,
@@ -566,6 +567,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 10,
   },
+  logsScroll: {
+    maxHeight: 260,
+  },
   tableCell: {
     color: '#254441',
     fontSize: 12,
@@ -574,15 +578,11 @@ const styles = StyleSheet.create({
   timeCell: {
     flex: 1.1,
   },
-  clientCell: {
-    flex: 1,
-    fontWeight: '700',
-  },
   statusCell: {
     flex: 0.9,
   },
   locationCell: {
-    flex: 1.2,
+    flex: 1.8,
   },
   cameraBlock: {
     gap: 12,

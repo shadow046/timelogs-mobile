@@ -25,7 +25,6 @@ export type LoginResponse = {
 
 export type AttendanceLog = {
   id: number;
-  client_name: string;
   location_address: string | null;
   accuracy: number | null;
   challenge_type: string;
