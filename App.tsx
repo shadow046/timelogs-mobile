@@ -34,8 +34,8 @@ export default function App() {
 function TimeLogsApp() {
   const cameraRef = useRef<CameraView>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const [login, setLogin] = useState('admin');
-  const [password, setPassword] = useState('123456');
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
   const [token, setToken] = useState('');
   const [user, setUser] = useState<LoginResponse['user'] | null>(null);
   const [authMessage, setAuthMessage] = useState('Sign in to continue.');
@@ -153,7 +153,7 @@ function TimeLogsApp() {
                 autoCapitalize="none"
                 autoComplete="username"
                 onChangeText={setLogin}
-                placeholder="Username or email"
+                placeholder="Employee Number"
                 style={styles.input}
                 value={login}
               />
