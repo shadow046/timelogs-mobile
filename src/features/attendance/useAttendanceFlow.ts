@@ -9,7 +9,7 @@ import { apiClient, LocationSnapshot } from '../../services/api/ApiClient';
 import { Challenge, Coordinates, EvidenceCapture, GeofenceResult } from '../../types/attendance';
 
 type FlowStep = 'idle' | 'gps' | 'camera' | 'upload' | 'done';
-const EVIDENCE_TTL_MS = 5 * 60 * 1000;
+const EVIDENCE_TTL_MS = 2 * 60 * 1000;
 
 export function useAttendanceFlow(token: string) {
   const [step, setStep] = useState<FlowStep>('idle');
