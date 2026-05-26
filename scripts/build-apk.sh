@@ -321,8 +321,8 @@ if [[ -t 0 ]]; then
   esac
 
   echo
-  read -r -p "Publish APK update manifest after build? [y/N]: " PUBLISH_CHOICE
-  case "${PUBLISH_CHOICE:-N}" in
+  read -r -p "Publish APK update manifest after build? [Y/n]: " PUBLISH_CHOICE
+  case "${PUBLISH_CHOICE:-Y}" in
     [yY]|[yY][eE][sS])
       SHOULD_PUBLISH_UPDATE=true
       read -r -p "Publish target [$UPDATE_PUBLISH_TARGET]: " CUSTOM_PUBLISH_TARGET
