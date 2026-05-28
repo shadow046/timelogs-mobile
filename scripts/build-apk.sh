@@ -33,6 +33,7 @@ APP_LABEL="FieldClock"
 UPDATE_MANIFEST_NAME="mobile.json"
 UPDATE_APK_PATH="/updates/$LATEST_APK_NAME"
 UPDATE_PUBLIC_BASE_URL="${UPDATE_PUBLIC_BASE_URL:-https://timelogs.ideaserv.online}"
+ABI_LIST=("arm64-v8a" "armeabi-v7a" "x86_64" "x86")
 
 if [[ -n "${UPDATE_PUBLISH_TARGET:-}" ]]; then
   DEFAULT_UPDATE_PUBLISH_TARGET="$UPDATE_PUBLISH_TARGET"
@@ -134,6 +135,41 @@ NODE
   fi
 }
 
+configure_abi_splits() {
+  if [[ ! -f "$ANDROID_BUILD_GRADLE" ]]; then
+    return
+  fi
+
+  ANDROID_BUILD_GRADLE_PATH="$ANDROID_BUILD_GRADLE" "$NODE_BIN" <<'NODE'
+const fs = require('fs');
+const path = process.env.ANDROID_BUILD_GRADLE_PATH;
+let buildGradle = fs.readFileSync(path, 'utf8');
+
+if (!buildGradle.includes('FIELD_CLOCK_ABI_SPLITS')) {
+  const splitBlock = `
+    // FIELD_CLOCK_ABI_SPLITS: build universal and per-architecture release APKs for smaller updates.
+    splits {
+        abi {
+            reset()
+            enable true
+            universalApk true
+            include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+        }
+    }
+`;
+  if (buildGradle.includes('\n    packagingOptions {')) {
+    buildGradle = buildGradle.replace(/\n    packagingOptions \{/, `${splitBlock}\n    packagingOptions {`);
+  } else if (buildGradle.includes('\n    androidResources {')) {
+    buildGradle = buildGradle.replace(/\n    androidResources \{/, `${splitBlock}\n    androidResources {`);
+  } else {
+    buildGradle = buildGradle.replace(/\n\}/, `${splitBlock}\n}`);
+  }
+}
+
+fs.writeFileSync(path, buildGradle);
+NODE
+}
+
 get_package_name() {
   local apk_path="$1"
   if [[ -x "${AAPT_BIN:-}" ]]; then
@@ -175,13 +211,63 @@ get_sha256() {
   fi
 }
 
+get_size_bytes() {
+  local file_path="$1"
+  if [[ -f "$file_path" ]]; then
+    stat -c '%s' "$file_path" 2>/dev/null || echo 0
+  else
+    echo 0
+  fi
+}
+
+write_abi_manifest_json() {
+  local manifest_path="$1"
+
+  ABI_MANIFEST_PATH="$manifest_path" \
+    ABI_OUTPUT_DIR="$OUTPUT_DIR" \
+    ABI_PUBLIC_BASE_URL="$UPDATE_PUBLIC_BASE_URL" \
+    ABI_LIST="${ABI_LIST[*]}" \
+    "$NODE_BIN" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+const outputDir = process.env.ABI_OUTPUT_DIR;
+const publicBaseUrl = process.env.ABI_PUBLIC_BASE_URL;
+const abis = (process.env.ABI_LIST || '').split(/\s+/).filter(Boolean);
+const apks = {};
+
+for (const abi of abis) {
+  const fileName = `FieldClock-${abi}.apk`;
+  const filePath = path.join(outputDir, fileName);
+  if (!fs.existsSync(filePath)) {
+    continue;
+  }
+
+  const crypto = require('crypto');
+  const contents = fs.readFileSync(filePath);
+  const apkPath = `/updates/${fileName}`;
+  apks[abi] = {
+    abi,
+    apk_path: apkPath,
+    apk_url: `${publicBaseUrl}${apkPath}`,
+    apk_sha256: crypto.createHash('sha256').update(contents).digest('hex'),
+    apk_size_bytes: contents.length,
+  };
+}
+
+fs.writeFileSync(process.env.ABI_MANIFEST_PATH, JSON.stringify(apks));
+NODE
+}
+
 write_update_manifest() {
   local manifest_path="$1"
   local details="$2"
   local mandatory="$3"
   local apk_size_bytes
+  local abi_manifest_path="$OUTPUT_DIR/.abi-apks.json"
 
   apk_size_bytes=$(stat -c '%s' "$OUTPUT_DIR/$LATEST_APK_NAME" 2>/dev/null || echo 0)
+  write_abi_manifest_json "$abi_manifest_path"
 
   UPDATE_MANIFEST_PATH="$manifest_path" \
     UPDATE_MANIFEST_DETAILS="$details" \
@@ -192,6 +278,7 @@ write_update_manifest() {
     UPDATE_MANIFEST_APK_URL="$UPDATE_PUBLIC_BASE_URL$UPDATE_APK_PATH" \
     UPDATE_MANIFEST_APK_SHA256="$APK_SHA256" \
     UPDATE_MANIFEST_APK_SIZE_BYTES="$apk_size_bytes" \
+    UPDATE_MANIFEST_ABI_JSON="$(cat "$abi_manifest_path")" \
     "$NODE_BIN" <<'NODE'
 const fs = require('fs');
 const path = process.env.UPDATE_MANIFEST_PATH;
@@ -211,6 +298,7 @@ const manifest = {
   published_at: new Date().toISOString(),
   apk_sha256: process.env.UPDATE_MANIFEST_APK_SHA256,
   apk_size_bytes: Number(process.env.UPDATE_MANIFEST_APK_SIZE_BYTES),
+  apks: JSON.parse(process.env.UPDATE_MANIFEST_ABI_JSON || '{}'),
   details: details.length ? details : ['Bug fixes and improvements.'],
 };
 
@@ -221,8 +309,14 @@ NODE
 publish_update() {
   local target="$1"
   local manifest_path="$OUTPUT_DIR/$UPDATE_MANIFEST_NAME"
+  local publish_files=()
 
   write_update_manifest "$manifest_path" "$UPDATE_DETAILS" "$UPDATE_MANDATORY"
+
+  while IFS= read -r file_path; do
+    publish_files+=("$file_path")
+  done < <(find "$OUTPUT_DIR" -maxdepth 1 -type f -name 'FieldClock*.apk' | sort)
+  publish_files+=("$manifest_path")
 
   if [[ "$target" == *:* ]]; then
     require_command ssh
@@ -231,10 +325,10 @@ publish_update() {
     local remote_host="${remote_dir%%:*}"
     local remote_path="${remote_dir#*:}"
     ssh "$remote_host" "mkdir -p '$remote_path'"
-    rsync -av "$OUTPUT_DIR/$LATEST_APK_NAME" "$OUTPUT_DIR/$VERSIONED_APK_NAME" "$manifest_path" "$remote_dir/"
+    rsync -av "${publish_files[@]}" "$remote_dir/"
   else
     mkdir -p "$target"
-    cp "$OUTPUT_DIR/$LATEST_APK_NAME" "$OUTPUT_DIR/$VERSIONED_APK_NAME" "$manifest_path" "$target/"
+    cp "${publish_files[@]}" "$target/"
   fi
 }
 
@@ -276,7 +370,7 @@ SHOULD_PREBUILD=false
 SHOULD_PUBLISH_UPDATE="${PUBLISH_UPDATE:-false}"
 UPDATE_PUBLISH_TARGET="${UPDATE_PUBLISH_TARGET:-$DEFAULT_UPDATE_PUBLISH_TARGET}"
 UPDATE_DETAILS="${UPDATE_DETAILS:-Bug fixes and improvements.}"
-UPDATE_MANDATORY="${UPDATE_MANDATORY:-false}"
+UPDATE_MANDATORY="${UPDATE_MANDATORY:-true}"
 
 if [[ -f "$ANDROID_STRINGS_PATH" ]] && ! grep -q "<string name=\"app_name\">${APP_LABEL}</string>" "$ANDROID_STRINGS_PATH"; then
   print_warning "Android app label is stale. Expo prebuild will run to refresh native branding."
@@ -335,9 +429,10 @@ if [[ -t 0 ]]; then
       UPDATE_PUBLISH_TARGET="${CUSTOM_PUBLISH_TARGET:-$UPDATE_PUBLISH_TARGET}"
       read -r -p "Release details (use | for multiple lines) [$UPDATE_DETAILS]: " CUSTOM_UPDATE_DETAILS
       UPDATE_DETAILS="${CUSTOM_UPDATE_DETAILS:-$UPDATE_DETAILS}"
-      read -r -p "Mandatory update? [y/N]: " MANDATORY_CHOICE
-      case "${MANDATORY_CHOICE:-N}" in
+      read -r -p "Mandatory update? [Y/n]: " MANDATORY_CHOICE
+      case "${MANDATORY_CHOICE:-Y}" in
         [yY]|[yY][eE][sS]) UPDATE_MANDATORY=true ;;
+        [nN]|[nN][oO]) UPDATE_MANDATORY=false ;;
       esac
       ;;
   esac
@@ -356,6 +451,8 @@ if [[ "$SHOULD_PREBUILD" == true ]]; then
   (cd "$MOBILE_ROOT" && "$PNPM_BIN" exec expo prebuild --platform android)
   update_versions "$VERSION" "$VERSION_CODE"
 fi
+
+configure_abi_splits
 
 print_header "Building APK..."
 (cd "$ANDROID_ROOT" && {
@@ -381,9 +478,12 @@ print_header "Building APK..."
   ./gradlew "${GRADLE_ARGS[@]}"
 })
 
-SOURCE_APK="$BUILD_PATH/app-release.apk"
+SOURCE_APK="$BUILD_PATH/app-universal-release.apk"
 if [[ ! -f "$SOURCE_APK" ]]; then
-  SOURCE_APK="$(find "$BUILD_PATH" -maxdepth 1 -type f -name '*release*.apk' | sort | head -1 || true)"
+  SOURCE_APK="$BUILD_PATH/app-release.apk"
+fi
+if [[ ! -f "$SOURCE_APK" ]]; then
+  SOURCE_APK="$(find "$BUILD_PATH" -maxdepth 1 -type f \( -name '*universal*release*.apk' -o -name '*release*.apk' \) | sort | head -1 || true)"
 fi
 
 if [[ -z "${SOURCE_APK:-}" || ! -f "$SOURCE_APK" ]]; then
@@ -396,6 +496,16 @@ cp "$SOURCE_APK" "$BUILD_PATH/$LATEST_APK_NAME"
 cp "$SOURCE_APK" "$BUILD_PATH/$VERSIONED_APK_NAME"
 cp "$SOURCE_APK" "$OUTPUT_DIR/$LATEST_APK_NAME"
 cp "$SOURCE_APK" "$OUTPUT_DIR/$VERSIONED_APK_NAME"
+
+for abi in "${ABI_LIST[@]}"; do
+  ABI_SOURCE_APK="$(find "$BUILD_PATH" -maxdepth 1 -type f -name "*${abi}*release*.apk" | sort | head -1 || true)"
+  if [[ -n "$ABI_SOURCE_APK" && -f "$ABI_SOURCE_APK" ]]; then
+    cp "$ABI_SOURCE_APK" "$OUTPUT_DIR/FieldClock-${abi}.apk"
+    cp "$ABI_SOURCE_APK" "$OUTPUT_DIR/FieldClock-${VERSION}-${abi}.apk"
+    cp "$ABI_SOURCE_APK" "$BUILD_PATH/FieldClock-${abi}.apk"
+    cp "$ABI_SOURCE_APK" "$BUILD_PATH/FieldClock-${VERSION}-${abi}.apk"
+  fi
+done
 
 PACKAGE_NAME="$(get_package_name "$SOURCE_APK"  || true)"
 BADGE_LABEL="$(get_badging_value "$SOURCE_APK" "^application-label:"  || true)"
@@ -437,6 +547,17 @@ Versioned APK SHA-256: ${VERSIONED_APK_SHA256:-Unavailable}
 Signer SHA-256: ${SIGNER_SHA256:-Unavailable}
 Signer SHA-1: ${SIGNER_SHA1:-Unavailable}
 EOF
+
+{
+  echo
+  echo "ABI APKs:"
+  for abi in "${ABI_LIST[@]}"; do
+    abi_apk="$OUTPUT_DIR/FieldClock-${abi}.apk"
+    if [[ -f "$abi_apk" ]]; then
+      echo "- $abi: $(get_file_size "$abi_apk") / sha256 $(get_sha256 "$abi_apk")"
+    fi
+  done
+} >> "$LATEST_INFO_FILE"
 
 if [[ "$SHOULD_PUBLISH_UPDATE" == true ]]; then
   if [[ -z "$UPDATE_PUBLISH_TARGET" ]]; then

@@ -30,7 +30,7 @@ const steadyFrameTarget = 24;
 const smileMoreProbability = 0.45;
 const smileReadyProbability = 0.68;
 const smileMissingFrameLimit = 90;
-const holdSteadySeconds = 3;
+const holdSteadySeconds = 1;
 const captureCountdownSeconds = 5;
 const finalCaptureDelayMs = 650;
 

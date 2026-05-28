@@ -182,6 +182,13 @@ function TimeLogsApp() {
     flow.reset();
   }
 
+  function goToLogs() {
+    flow.reset();
+    setCameraPreviewReady(false);
+    setCameraMountError('');
+    setActiveView('logs');
+  }
+
   async function requestMediaPermissions() {
     await requestCameraPermission();
   }
@@ -251,7 +258,7 @@ function TimeLogsApp() {
 
           <View style={styles.tabBar}>
             <Text
-              onPress={() => setActiveView('logs')}
+              onPress={goToLogs}
               style={[styles.tabButton, activeView === 'logs' ? styles.tabButtonActive : null]}
             >
               Logs
@@ -300,7 +307,7 @@ function TimeLogsApp() {
             <View style={styles.panel}>
             <View style={styles.dashboardHeader}>
               <Text style={styles.panelTitle}>Time in</Text>
-              <Text onPress={() => setActiveView('logs')} style={styles.linkButton}>Back to logs</Text>
+              <Text onPress={goToLogs} style={styles.linkButton}>Back to logs</Text>
             </View>
             {/* <Text style={styles.status}>{flow.message}</Text> */}
             {flow.error ? <Text style={styles.error}>{flow.error}</Text> : null}

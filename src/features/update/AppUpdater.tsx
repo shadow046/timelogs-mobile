@@ -1,7 +1,8 @@
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +21,15 @@ const FLAG_ACTIVITY_NEW_TASK = 0x10000000;
 const UPDATE_APK_FILE = `${FileSystem.documentDirectory ?? ''}app-update.apk`;
 const INSTALL_PACKAGE_ACTION = 'android.intent.action.INSTALL_PACKAGE';
 const VIEW_ACTION = 'android.intent.action.VIEW';
+const ABI_PREFERENCE = ['arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86'];
+
+type RemoteApkVariant = {
+  abi?: string;
+  apk_path?: string;
+  apk_url?: string;
+  apk_sha256?: string;
+  apk_size_bytes?: number;
+};
 
 type RemoteVersionManifest = {
   version?: string;
@@ -29,6 +39,7 @@ type RemoteVersionManifest = {
   latest_version_code?: number;
   details?: string[];
   mandatory?: boolean;
+  apks?: Record<string, RemoteApkVariant | string>;
 };
 
 type AppUpdaterContextValue = {
@@ -58,9 +69,16 @@ export function AppUpdater({
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [pendingInstallUri, setPendingInstallUri] = useState<string | null>(null);
+  const autoCheckedRef = useRef(false);
+  const autoInstallStartedRef = useRef(false);
+  const downloadingRef = useRef(false);
 
   const packageName = getPackageName();
   const canSelfUpdate = Platform.OS === 'android' && Constants.appOwnership !== 'expo';
+
+  useEffect(() => {
+    downloadingRef.current = downloading;
+  }, [downloading]);
 
   const installApk = useCallback(
     async (fileUri: string, openSettingsOnFailure = true) => {
@@ -187,7 +205,7 @@ export function AppUpdater({
 
       const manifest = (await response.json()) as RemoteVersionManifest;
       const remoteVersion = manifest.version ?? manifest.latest_version;
-      const apkUrl = manifest.apk_url;
+      const apkUrl = selectUpdateApkUrl(manifest);
 
       if (!remoteVersion || !apkUrl) {
         throw new Error('Update manifest is missing version or apk_url.');
@@ -203,35 +221,30 @@ export function AppUpdater({
         return;
       }
 
-      const changelog = manifest.changelog ?? manifest.details?.join('\n') ?? 'Bug fixes and improvements.';
-      Alert.alert(
-        `Update ${remoteVersion} available`,
-        changelog,
-        [
-          ...(manifest.mandatory ? [] : [{ text: 'Later', style: 'cancel' as const }]),
-          {
-            text: 'Install',
-            onPress: () => {
-              void downloadAndInstall(apkUrl);
-            },
-          },
-        ],
-      );
+      if (autoInstallStartedRef.current || downloadingRef.current) {
+        return;
+      }
+
+      autoInstallStartedRef.current = true;
+      await downloadAndInstall(apkUrl);
+      autoInstallStartedRef.current = false;
     } catch (caught) {
       Alert.alert(
         'Update check failed',
         caught instanceof Error ? caught.message : 'Unable to check for updates.',
       );
+      autoInstallStartedRef.current = false;
     } finally {
       setChecking(false);
     }
   }, [canSelfUpdate, downloadAndInstall, manifestUrl]);
 
   useEffect(() => {
-    if (!autoCheck || Platform.OS !== 'android' || !canSelfUpdate) {
+    if (!autoCheck || autoCheckedRef.current || Platform.OS !== 'android' || !canSelfUpdate) {
       return;
     }
 
+    autoCheckedRef.current = true;
     void checkNow(false);
   }, [autoCheck, canSelfUpdate, checkNow]);
 
@@ -304,6 +317,62 @@ function remoteVersionLabel(manifest: RemoteVersionManifest, remoteVersion: stri
   const versionCode = Number(manifest.latest_version_code ?? 0);
 
   return versionCode ? `${remoteVersion} (${versionCode})` : remoteVersion;
+}
+
+function selectUpdateApkUrl(manifest: RemoteVersionManifest) {
+  const apks = manifest.apks ?? {};
+  const supportedAbis = getSupportedAndroidAbis();
+
+  for (const abi of supportedAbis) {
+    const variant = apks[abi];
+    const url = typeof variant === 'string' ? variant : variant?.apk_url;
+    if (url) {
+      return url;
+    }
+  }
+
+  return manifest.apk_url;
+}
+
+function getSupportedAndroidAbis() {
+  const supportedArchitectures = Device.supportedCpuArchitectures ?? [];
+  const normalized = supportedArchitectures
+    .flatMap((architecture) => normalizeCpuArchitecture(architecture))
+    .filter((architecture): architecture is string => Boolean(architecture));
+  const unique = Array.from(new Set(normalized));
+
+  if (!unique.length) {
+    return [];
+  }
+
+  return [
+    ...ABI_PREFERENCE.filter((abi) => unique.includes(abi)),
+    ...ABI_PREFERENCE.filter((abi) => !unique.includes(abi)),
+  ];
+}
+
+function normalizeCpuArchitecture(architecture: string) {
+  const value = architecture.toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-');
+  const aliases: string[] = [];
+
+  if (value.includes('arm64') || value.includes('aarch64')) {
+    aliases.push('arm64-v8a');
+  }
+  if (value.includes('armeabi-v7a') || value.includes('arm-v7') || value.includes('armv7')) {
+    aliases.push('armeabi-v7a');
+  }
+  if (value.includes('x86-64') || value.includes('x86_64') || value.includes('amd64')) {
+    aliases.push('x86_64');
+  }
+  if (value === 'x86' || value.includes('intel-x86')) {
+    aliases.push('x86');
+  }
+
+  if (ABI_PREFERENCE.includes(value)) {
+    aliases.push(value);
+  }
+
+  return aliases;
 }
 
 async function launchPackageInstaller(contentUri: string, packageName: string) {

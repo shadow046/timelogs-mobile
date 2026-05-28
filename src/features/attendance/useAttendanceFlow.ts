@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CameraView } from 'expo-camera';
 import { cameraService } from '../../services/camera/CameraService';
 import { deviceInfoService } from '../../services/upload/DeviceInfoService';
@@ -23,6 +23,7 @@ export function useAttendanceFlow(token: string) {
   const [error, setError] = useState<string | null>(null);
   const [selfieCapturedAt, setSelfieCapturedAt] = useState<number | null>(null);
   const [locationCapturedAt, setLocationCapturedAt] = useState<number | null>(null);
+  const flowRunRef = useRef(0);
 
   const canSubmit = useMemo(() => Boolean(token && coordinates && evidence), [coordinates, evidence, token]);
 
@@ -68,6 +69,7 @@ export function useAttendanceFlow(token: string) {
       return;
     }
 
+    const flowRun = flowRunRef.current;
     setBusy(true);
     setError(null);
 
@@ -77,6 +79,10 @@ export function useAttendanceFlow(token: string) {
       const snapshot = token
         ? await apiClient.resolveLocation(token, currentCoordinates)
         : null;
+      if (flowRun !== flowRunRef.current) {
+        return;
+      }
+
       setCoordinates(currentCoordinates);
       setGeofence(result);
       setLocationSnapshot(snapshot);
@@ -85,9 +91,15 @@ export function useAttendanceFlow(token: string) {
       setMessage('Location captured. Review the map before submitting.');
       setStep('upload');
     } catch (caught) {
+      if (flowRun !== flowRunRef.current) {
+        return;
+      }
+
       setError(caught instanceof Error ? caught.message : 'Location check failed.');
     } finally {
-      setBusy(false);
+      if (flowRun === flowRunRef.current) {
+        setBusy(false);
+      }
     }
   }
 
@@ -97,21 +109,32 @@ export function useAttendanceFlow(token: string) {
       return;
     }
 
+    const flowRun = flowRunRef.current;
     setBusy(true);
     setError(null);
     setMessage('Capturing selfie evidence.');
 
     try {
       const capture = await cameraService.captureSelfiePhoto(camera);
+      if (flowRun !== flowRunRef.current) {
+        return;
+      }
+
       setEvidence(capture);
       setSelfieCapturedAt(Date.now());
       setLocationCapturedAt(null);
       setStep('gps');
       setMessage('Selfie captured. Continue to location.');
     } catch (caught) {
+      if (flowRun !== flowRunRef.current) {
+        return;
+      }
+
       setError(caught instanceof Error ? caught.message : 'Selfie capture failed.');
     } finally {
-      setBusy(false);
+      if (flowRun === flowRunRef.current) {
+        setBusy(false);
+      }
     }
   }
 
@@ -135,6 +158,7 @@ export function useAttendanceFlow(token: string) {
       return;
     }
 
+    const flowRun = flowRunRef.current;
     setBusy(true);
     setError(null);
 
@@ -147,16 +171,27 @@ export function useAttendanceFlow(token: string) {
         challengeType: challenge.type,
         deviceInfo: deviceInfoService.getDeviceInfo(),
       });
+      if (flowRun !== flowRunRef.current) {
+        return;
+      }
+
       setStep('done');
       setMessage(`${response.message} Log #${response.data.id}`);
     } catch (caught) {
+      if (flowRun !== flowRunRef.current) {
+        return;
+      }
+
       setError(caught instanceof Error ? caught.message : 'Upload failed.');
     } finally {
-      setBusy(false);
+      if (flowRun === flowRunRef.current) {
+        setBusy(false);
+      }
     }
   }
 
   function reset() {
+    flowRunRef.current += 1;
     setStep('idle');
     setChallenge(livenessService.getRandomChallenge());
     setCoordinates(null);
@@ -167,9 +202,11 @@ export function useAttendanceFlow(token: string) {
     setLocationCapturedAt(null);
     setMessage('Ready to take your selfie.');
     setError(null);
+    setBusy(false);
   }
 
   function resetExpiredFlow(expiredMessage: string) {
+    flowRunRef.current += 1;
     setStep('idle');
     setChallenge(livenessService.getRandomChallenge());
     setCoordinates(null);
@@ -180,9 +217,11 @@ export function useAttendanceFlow(token: string) {
     setLocationCapturedAt(null);
     setMessage('Ready to take your selfie.');
     setError(expiredMessage);
+    setBusy(false);
   }
 
   function startTimeIn() {
+    flowRunRef.current += 1;
     setStep('camera');
     setChallenge(livenessService.getRandomChallenge());
     setCoordinates(null);
