@@ -174,6 +174,31 @@ fs.writeFileSync(path, buildGradle);
 NODE
 }
 
+ensure_gradle_wrapper() {
+  local wrapper_jar="$ANDROID_ROOT/gradle/wrapper/gradle-wrapper.jar"
+  local wrapper_properties="$ANDROID_ROOT/gradle/wrapper/gradle-wrapper.properties"
+  local fallback_wrapper_dir="$MOBILE_ROOT/node_modules/@react-native/gradle-plugin/gradle/wrapper"
+
+  if [[ -f "$wrapper_jar" && -f "$wrapper_properties" ]]; then
+    return
+  fi
+
+  if [[ -f "$fallback_wrapper_dir/gradle-wrapper.jar" && -f "$fallback_wrapper_dir/gradle-wrapper.properties" ]]; then
+    print_warning "Gradle wrapper files are missing. Restoring from @react-native/gradle-plugin."
+    mkdir -p "$ANDROID_ROOT/gradle/wrapper"
+    cp "$fallback_wrapper_dir/gradle-wrapper.jar" "$wrapper_jar"
+    cp "$fallback_wrapper_dir/gradle-wrapper.properties" "$wrapper_properties"
+  fi
+
+  if [[ ! -f "$wrapper_jar" || ! -f "$wrapper_properties" ]]; then
+    print_error "Missing Gradle wrapper files under $ANDROID_ROOT/gradle/wrapper."
+    print_error "Run pnpm install first, or run Expo prebuild again to regenerate the Android wrapper."
+    exit 1
+  fi
+
+  chmod +x "$ANDROID_ROOT/gradlew" 2>/dev/null || true
+}
+
 get_package_name() {
   local apk_path="$1"
   if [[ -x "${AAPT_BIN:-}" ]]; then
@@ -456,6 +481,7 @@ if [[ "$SHOULD_PREBUILD" == true ]]; then
   update_versions "$VERSION" "$VERSION_CODE"
 fi
 
+ensure_gradle_wrapper
 configure_abi_splits
 
 print_header "Building APK..."
