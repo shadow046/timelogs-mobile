@@ -27,9 +27,6 @@ ANDROID_BUILD_GRADLE="$ANDROID_ROOT/app/build.gradle"
 ANDROID_STRINGS_PATH="$ANDROID_ROOT/app/src/main/res/values/strings.xml"
 BUILD_PATH="$ANDROID_ROOT/app/build/outputs/apk/release"
 DEFAULT_OUTPUT_DIR="$PROJECT_ROOT/APK"
-if [[ -d "/var/www/html" && -w "/var/www/html" ]]; then
-  DEFAULT_OUTPUT_DIR="/var/www/html/fieldclock-apk"
-fi
 OUTPUT_DIR="${APK_OUTPUT_DIR:-${FIELD_CLOCK_APK_OUTPUT_DIR:-$DEFAULT_OUTPUT_DIR}}"
 LATEST_INFO_FILE="$OUTPUT_DIR/latest.txt"
 LATEST_APK_NAME="FieldClock.apk"
