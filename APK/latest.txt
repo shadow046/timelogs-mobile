@@ -1,8 +1,8 @@
 FieldClock APK Build
 ===========================
-Version: 1.1.20
-Version Code: 1012000
-Built At: 2026-05-26 15:33:34 PST
+Version: 1.1.23
+Version Code: 1012300
+Built At: 2026-05-28 12:51:17 PST
 Built By: root
 Build Host: ubuntu
 Project Root: /opt/timelogs-mobile
@@ -16,10 +16,10 @@ Package Name: com.timelogs.presence
 Min SDK: 24
 Target SDK: 36
 Latest APK: FieldClock.apk
-Latest APK Size: 156297550 bytes / 149.06 MB
-Latest APK SHA-256: 53e59bdac2570a5a6d2f64f2c06d04101cc91c2cf16792ac8805ed9239b571df
-Versioned APK: FieldClock-1.1.20.apk
-Versioned APK Size: 156297550 bytes / 149.06 MB
-Versioned APK SHA-256: 53e59bdac2570a5a6d2f64f2c06d04101cc91c2cf16792ac8805ed9239b571df
+Latest APK Size: 156299986 bytes / 149.06 MB
+Latest APK SHA-256: 489530b1e7384b8597f5f582ffe752734d23f4abf2a53482635b4d75bc5d6845
+Versioned APK: FieldClock-1.1.23.apk
+Versioned APK Size: 156299986 bytes / 149.06 MB
+Versioned APK SHA-256: 489530b1e7384b8597f5f582ffe752734d23f4abf2a53482635b4d75bc5d6845
 Signer SHA-256: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c
 Signer SHA-1: 5e8f16062ea3cd2c4a0d547876baa6f38cabf625

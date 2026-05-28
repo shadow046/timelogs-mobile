@@ -1,14 +1,14 @@
 {
-  "version": "v1.1.20",
+  "version": "v1.1.23",
   "changelog": "Bug fixes and improvements.",
-  "latest_version": "1.1.20",
-  "latest_version_code": 1012000,
+  "latest_version": "1.1.23",
+  "latest_version_code": 1012300,
   "apk_path": "/updates/FieldClock.apk",
   "apk_url": "https://timelogs.ideaserv.online/updates/FieldClock.apk",
   "mandatory": false,
-  "published_at": "2026-05-26T07:33:34.290Z",
-  "apk_sha256": "53e59bdac2570a5a6d2f64f2c06d04101cc91c2cf16792ac8805ed9239b571df",
-  "apk_size_bytes": 156297550,
+  "published_at": "2026-05-28T04:51:17.847Z",
+  "apk_sha256": "489530b1e7384b8597f5f582ffe752734d23f4abf2a53482635b4d75bc5d6845",
+  "apk_size_bytes": 156299986,
   "details": [
     "Bug fixes and improvements."
   ]
