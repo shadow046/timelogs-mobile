@@ -18,10 +18,16 @@ import { appConfig } from './src/config/appConfig';
 import { SelfieCaptureProps } from './src/features/attendance/SelfieCaptureTypes';
 import { useAttendanceFlow } from './src/features/attendance/useAttendanceFlow';
 import { AppUpdater, useAppUpdater } from './src/features/update/AppUpdater';
-import { apiClient, AttendanceLog, LoginResponse } from './src/services/api/ApiClient';
+import { apiClient, AttendanceLog, LoginResponse, ServerTimeResponse } from './src/services/api/ApiClient';
 import { deviceInfoService } from './src/services/upload/DeviceInfoService';
 
 type DashboardView = 'logs' | 'timeIn';
+
+type ServerClockState = {
+  epochMs: number;
+  syncedAtMs: number;
+  timezone: string;
+};
 
 export default function App() {
   return (
@@ -43,6 +49,9 @@ function TimeLogsApp() {
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [logsBusy, setLogsBusy] = useState(false);
   const [logsMessage, setLogsMessage] = useState('No attendance logs loaded yet.');
+  const [serverClock, setServerClock] = useState<ServerClockState | null>(null);
+  const [serverClockText, setServerClockText] = useState('Syncing server time...');
+  const [serverClockMessage, setServerClockMessage] = useState('');
   const [activeView, setActiveView] = useState<DashboardView>('logs');
   const [cameraPreviewReady, setCameraPreviewReady] = useState(false);
   const [cameraMountError, setCameraMountError] = useState('');
@@ -56,11 +65,43 @@ function TimeLogsApp() {
 
   useEffect(() => {
     if (!token) {
+      setServerClock(null);
+      setServerClockText('Syncing server time...');
+      setServerClockMessage('');
       return;
     }
 
     void loadAttendanceLogs(token);
+    void syncServerTime(token);
   }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      void syncServerTime(token);
+    }, 60_000);
+
+    return () => clearInterval(interval);
+  }, [token]);
+
+  useEffect(() => {
+    if (!serverClock) {
+      return;
+    }
+
+    const tick = () => {
+      const elapsedMs = getMonotonicNow() - serverClock.syncedAtMs;
+      setServerClockText(formatServerClock(serverClock.epochMs + elapsedMs, serverClock.timezone));
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+
+    return () => clearInterval(interval);
+  }, [serverClock]);
 
   useEffect(() => {
     if (token && flow.step === 'done') {
@@ -119,11 +160,24 @@ function TimeLogsApp() {
     }
   }
 
+  async function syncServerTime(authToken = token) {
+    try {
+      const response = await apiClient.getServerTime(authToken);
+      setServerClock(toServerClockState(response));
+      setServerClockMessage('');
+    } catch (caught) {
+      setServerClockMessage(caught instanceof Error ? caught.message : 'Unable to sync server time.');
+    }
+  }
+
   function signOut() {
     setToken('');
     setUser(null);
     setLogs([]);
     setLogsMessage('No attendance logs loaded yet.');
+    setServerClock(null);
+    setServerClockText('Syncing server time...');
+    setServerClockMessage('');
     setActiveView('logs');
     flow.reset();
   }
@@ -363,6 +417,14 @@ function TimeLogsApp() {
             {flow.step === 'done' ? <PrimaryButton label="Start another time-in" onPress={flow.startTimeIn} /> : null}
             </View>
           ) : null}
+
+          <View style={styles.serverClock}>
+            <Text style={styles.serverClockLabel}>Server time</Text>
+            <Text style={styles.serverClockTime}>{serverClockText}</Text>
+            <Text style={styles.serverClockZone}>
+              Asia/Manila{serverClockMessage ? ` - ${serverClockMessage}` : ''}
+            </Text>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -371,6 +433,35 @@ function TimeLogsApp() {
 
 function formatCoordinates(latitude: number, longitude: number) {
   return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+}
+
+function toServerClockState(response: ServerTimeResponse): ServerClockState {
+  return {
+    epochMs: response.epoch_ms,
+    syncedAtMs: getMonotonicNow(),
+    timezone: response.timezone || 'Asia/Manila',
+  };
+}
+
+function getMonotonicNow() {
+  return globalThis.performance?.now() ?? Date.now();
+}
+
+function formatServerClock(epochMs: number, timezone: string) {
+  try {
+    return new Intl.DateTimeFormat('en-PH', {
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: true,
+      minute: '2-digit',
+      month: 'short',
+      second: '2-digit',
+      timeZone: timezone,
+      year: 'numeric',
+    }).format(new Date(epochMs));
+  } catch {
+    return new Date(epochMs).toISOString();
+  }
 }
 
 const styles = StyleSheet.create({
@@ -577,6 +668,33 @@ const styles = StyleSheet.create({
   },
   locationCell: {
     flex: 1.8,
+  },
+  serverClock: {
+    alignItems: 'center',
+    backgroundColor: '#EAF1EC',
+    borderColor: '#C8D1CB',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  serverClockLabel: {
+    color: '#52615E',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  serverClockTime: {
+    color: '#152B2A',
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  serverClockZone: {
+    color: '#52615E',
+    fontSize: 12,
+    textAlign: 'center',
   },
   cameraBlock: {
     gap: 12,

@@ -38,6 +38,15 @@ export type AttendanceLog = {
   created_at: string | null;
 };
 
+export type ServerTimeResponse = {
+  timezone: string;
+  iso: string;
+  epoch_ms: number;
+  date: string;
+  time: string;
+  display: string;
+};
+
 export type LocationSnapshot = {
   lat: number;
   lng: number;
@@ -101,6 +110,17 @@ export class ApiClient {
     });
 
     return parseJsonResponse<{ data: AttendanceLog[] }>(response);
+  }
+
+  async getServerTime(token: string): Promise<ServerTimeResponse> {
+    const response = await fetch(`${this.baseUrl}/server-time`, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return parseJsonResponse<ServerTimeResponse>(response);
   }
 
   async resolveLocation(
