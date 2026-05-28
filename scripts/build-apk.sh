@@ -178,21 +178,34 @@ ensure_gradle_wrapper() {
   local wrapper_jar="$ANDROID_ROOT/gradle/wrapper/gradle-wrapper.jar"
   local wrapper_properties="$ANDROID_ROOT/gradle/wrapper/gradle-wrapper.properties"
   local fallback_wrapper_dir="$MOBILE_ROOT/node_modules/@react-native/gradle-plugin/gradle/wrapper"
+  local fallback_wrapper_jar=""
+  local fallback_wrapper_properties=""
 
   if [[ -f "$wrapper_jar" && -f "$wrapper_properties" ]]; then
     return
   fi
 
-  if [[ -f "$fallback_wrapper_dir/gradle-wrapper.jar" && -f "$fallback_wrapper_dir/gradle-wrapper.properties" ]]; then
+  if [[ -f "$fallback_wrapper_dir/gradle-wrapper.jar" ]]; then
+    fallback_wrapper_jar="$fallback_wrapper_dir/gradle-wrapper.jar"
+    fallback_wrapper_properties="$fallback_wrapper_dir/gradle-wrapper.properties"
+  elif [[ -d "$MOBILE_ROOT/node_modules" ]]; then
+    fallback_wrapper_jar="$(find "$MOBILE_ROOT/node_modules" -path '*/gradle/wrapper/gradle-wrapper.jar' | sort | head -1 || true)"
+    if [[ -n "$fallback_wrapper_jar" ]]; then
+      fallback_wrapper_properties="$(dirname "$fallback_wrapper_jar")/gradle-wrapper.properties"
+    fi
+  fi
+
+  if [[ -f "$fallback_wrapper_jar" && -f "$fallback_wrapper_properties" ]]; then
     print_warning "Gradle wrapper files are missing. Restoring from @react-native/gradle-plugin."
     mkdir -p "$ANDROID_ROOT/gradle/wrapper"
-    cp "$fallback_wrapper_dir/gradle-wrapper.jar" "$wrapper_jar"
-    cp "$fallback_wrapper_dir/gradle-wrapper.properties" "$wrapper_properties"
+    cp "$fallback_wrapper_jar" "$wrapper_jar"
+    cp "$fallback_wrapper_properties" "$wrapper_properties"
   fi
 
   if [[ ! -f "$wrapper_jar" || ! -f "$wrapper_properties" ]]; then
     print_error "Missing Gradle wrapper files under $ANDROID_ROOT/gradle/wrapper."
     print_error "Run pnpm install first, or run Expo prebuild again to regenerate the Android wrapper."
+    print_error "You can check available wrapper files with: find node_modules -path '*/gradle/wrapper/gradle-wrapper.jar' | head"
     exit 1
   fi
 
