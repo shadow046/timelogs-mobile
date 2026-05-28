@@ -16,14 +16,8 @@ type GuideLayout = {
   height: number;
 };
 
-type MotionState = {
-  baselineY: number | null;
-  upSeen: boolean;
-  downSeen: boolean;
-};
-
-type BlinkState = {
-  closedSeen: boolean;
+type SmileState = {
+  centeredFrames: number;
   missingFrames: number;
 };
 
@@ -32,12 +26,10 @@ type CapturePhase = 'detecting' | 'holding' | 'counting';
 const guideCenterYRatio = 0.44;
 const guideRadiusXRatio = 0.38;
 const guideRadiusYRatio = 0.29;
-const guideGraceRatio = 1.45;
-const upMoveRatio = 0.04;
-const downMoveRatio = 0.032;
-const blinkClosedProbability = 0.38;
-const blinkOpenProbability = 0.62;
-const blinkMissingFrameLimit = 90;
+const steadyFrameTarget = 24;
+const smileMoreProbability = 0.45;
+const smileReadyProbability = 0.68;
+const smileMissingFrameLimit = 90;
 const holdSteadySeconds = 3;
 const captureCountdownSeconds = 5;
 const finalCaptureDelayMs = 650;
@@ -56,8 +48,7 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
   const [countdown, setCountdown] = useState<number | null>(null);
   const [capturePhase, setCapturePhase] = useState<CapturePhase>('detecting');
   const [faceCentered, setFaceCentered] = useState(false);
-  const motionRef = useRef<MotionState>({ baselineY: null, upSeen: false, downSeen: false });
-  const blinkRef = useRef<BlinkState>({ closedSeen: false, missingFrames: 0 });
+  const smileRef = useRef<SmileState>({ centeredFrames: 0, missingFrames: 0 });
   const activeRef = useRef(active);
   const busyRef = useRef(busy);
   const captureScheduledRef = useRef(false);
@@ -172,8 +163,7 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
 
       const face = faces[0];
       if (!face) {
-        motionRef.current = { baselineY: null, upSeen: false, downSeen: false };
-        blinkRef.current = { closedSeen: false, missingFrames: 0 };
+        smileRef.current = { centeredFrames: 0, missingFrames: 0 };
         setFaceCentered(false);
         setInstruction('Center your face in the guide.');
         return;
@@ -190,61 +180,40 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
         ((centerY - guideCenterY) * (centerY - guideCenterY)) / (radiusY * radiusY);
       const faceFits = face.bounds.width >= layout.width * 0.16 && face.bounds.width <= layout.width * 0.84;
       const insideGuide = normalizedDistance <= 1 && faceFits;
-      const insideGuideWithGrace = normalizedDistance <= guideGraceRatio && faceFits;
 
-      setFaceCentered(insideGuide || (motionRef.current.upSeen && insideGuideWithGrace));
+      setFaceCentered(insideGuide);
 
-      if (!insideGuide && !motionRef.current.upSeen) {
-        motionRef.current = { baselineY: null, upSeen: false, downSeen: false };
-        blinkRef.current = { closedSeen: false, missingFrames: 0 };
+      if (!insideGuide) {
+        smileRef.current = { centeredFrames: 0, missingFrames: 0 };
         setInstruction('Center your face in the guide.');
         return;
       }
 
-      const motion = motionRef.current;
-      if (motion.baselineY === null) {
-        motion.baselineY = centerY;
-        setInstruction('Move up and down.');
+      if (smileRef.current.centeredFrames < steadyFrameTarget) {
+        smileRef.current.centeredFrames += 1;
+        setInstruction('Hold steady.');
         return;
       }
 
-      const upThreshold = layout.height * upMoveRatio;
-      const downThreshold = layout.height * downMoveRatio;
-      if (insideGuide && centerY < motion.baselineY - upThreshold) {
-        motion.upSeen = true;
-        setInstruction('Now move down slightly.');
-      }
+      const smilingProbability = face.smilingProbability;
 
-      if (motion.upSeen && insideGuideWithGrace && centerY > motion.baselineY + downThreshold) {
-        motion.downSeen = true;
-        setInstruction('Blink once.');
-      }
+      if (smilingProbability === undefined) {
+        smileRef.current.missingFrames += 1;
 
-      if (motion.downSeen && insideGuideWithGrace) {
-        const leftEyeOpenProbability = face.leftEyeOpenProbability;
-        const rightEyeOpenProbability = face.rightEyeOpenProbability;
-
-        if (leftEyeOpenProbability === undefined || rightEyeOpenProbability === undefined) {
-          blinkRef.current.missingFrames += 1;
-
-          if (blinkRef.current.missingFrames >= blinkMissingFrameLimit) {
-            scheduleCaptureSelfie();
-          }
-
-          return;
-        }
-
-        const averageEyeOpenProbability = (leftEyeOpenProbability + rightEyeOpenProbability) / 2;
-        if (averageEyeOpenProbability <= blinkClosedProbability) {
-          blinkRef.current.closedSeen = true;
-          setInstruction('Open your eyes.');
-          return;
-        }
-
-        if (blinkRef.current.closedSeen && averageEyeOpenProbability >= blinkOpenProbability) {
+        if (smileRef.current.missingFrames >= smileMissingFrameLimit) {
           scheduleCaptureSelfie();
         }
+
+        setInstruction('Smile.');
+        return;
       }
+
+      if (smilingProbability >= smileReadyProbability) {
+        scheduleCaptureSelfie();
+        return;
+      }
+
+      setInstruction(smilingProbability >= smileMoreProbability ? 'Smile more.' : 'Smile.');
     },
     [active, busy, layout.height, layout.width, scheduleCaptureSelfie],
   );
