@@ -95,21 +95,9 @@ export function AppUpdater({
         }
 
         setPendingInstallUri(fileUri);
-        Alert.alert(
-          'Allow app installs',
-          'Android needs permission to install updates from this app. Enable it, then return here to continue installing.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Open settings',
-              onPress: () => {
-                void IntentLauncher.startActivityAsync(
-                  IntentLauncher.ActivityAction.MANAGE_UNKNOWN_APP_SOURCES,
-                  { data: `package:${packageName}` },
-                );
-              },
-            },
-          ],
+        await IntentLauncher.startActivityAsync(
+          IntentLauncher.ActivityAction.MANAGE_UNKNOWN_APP_SOURCES,
+          { data: `package:${packageName}` },
         );
       }
     },
