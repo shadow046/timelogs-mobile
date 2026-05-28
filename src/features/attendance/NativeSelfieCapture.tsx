@@ -27,6 +27,8 @@ const guideCenterYRatio = 0.44;
 const guideRadiusXRatio = 0.38;
 const guideRadiusYRatio = 0.29;
 const steadyFrameTarget = 24;
+const minimumFaceWidthRatio = 0.24;
+const maximumFaceWidthRatio = 0.84;
 const smileMoreProbability = 0.45;
 const smileReadyProbability = 0.68;
 const smileMissingFrameLimit = 90;
@@ -178,14 +180,29 @@ export function NativeSelfieCapture({ active, busy, onCaptured, onError }: Selfi
       const normalizedDistance =
         ((centerX - guideCenterX) * (centerX - guideCenterX)) / (radiusX * radiusX) +
         ((centerY - guideCenterY) * (centerY - guideCenterY)) / (radiusY * radiusY);
-      const faceFits = face.bounds.width >= layout.width * 0.16 && face.bounds.width <= layout.width * 0.84;
-      const insideGuide = normalizedDistance <= 1 && faceFits;
+      const faceWidthRatio = face.bounds.width / layout.width;
+      const centeredInGuide = normalizedDistance <= 1;
+      const faceCloseEnough = faceWidthRatio >= minimumFaceWidthRatio;
+      const faceNotTooClose = faceWidthRatio <= maximumFaceWidthRatio;
+      const insideGuide = centeredInGuide && faceCloseEnough && faceNotTooClose;
 
       setFaceCentered(insideGuide);
 
-      if (!insideGuide) {
+      if (!centeredInGuide) {
         smileRef.current = { centeredFrames: 0, missingFrames: 0 };
         setInstruction('Center your face in the guide.');
+        return;
+      }
+
+      if (!faceCloseEnough) {
+        smileRef.current = { centeredFrames: 0, missingFrames: 0 };
+        setInstruction('Move closer.');
+        return;
+      }
+
+      if (!faceNotTooClose) {
+        smileRef.current = { centeredFrames: 0, missingFrames: 0 };
+        setInstruction('Move back slightly.');
         return;
       }
 
