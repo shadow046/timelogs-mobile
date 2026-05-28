@@ -1,14 +1,44 @@
 {
-  "version": "v1.1.23",
+  "version": "v1.1.25",
   "changelog": "Bug fixes and improvements.",
-  "latest_version": "1.1.23",
-  "latest_version_code": 1012300,
+  "latest_version": "1.1.25",
+  "latest_version_code": 1012500,
   "apk_path": "/updates/FieldClock.apk",
   "apk_url": "https://timelogs.ideaserv.online/updates/FieldClock.apk",
   "mandatory": true,
-  "published_at": "2026-05-28T04:51:17.847Z",
-  "apk_sha256": "489530b1e7384b8597f5f582ffe752734d23f4abf2a53482635b4d75bc5d6845",
-  "apk_size_bytes": 156299986,
+  "published_at": "2026-05-28T06:12:54.590Z",
+  "apk_sha256": "a4601b2e2eb044119415db760c68a546a199f5d3e0e632f3a1da615b5d593548",
+  "apk_size_bytes": 156301614,
+  "apks": {
+    "arm64-v8a": {
+      "abi": "arm64-v8a",
+      "apk_path": "/updates/FieldClock-arm64-v8a.apk",
+      "apk_url": "https://timelogs.ideaserv.online/updates/FieldClock-arm64-v8a.apk",
+      "apk_sha256": "f0176eeee334d808d07067b3b20c65401b3d29f772cab6cb7fb859655987aa26",
+      "apk_size_bytes": 53390918
+    },
+    "armeabi-v7a": {
+      "abi": "armeabi-v7a",
+      "apk_path": "/updates/FieldClock-armeabi-v7a.apk",
+      "apk_url": "https://timelogs.ideaserv.online/updates/FieldClock-armeabi-v7a.apk",
+      "apk_sha256": "9c9052f39bd196d73ca9a63d68e22dc2880ac5396482e373253318fa3e36cdbc",
+      "apk_size_bytes": 41848434
+    },
+    "x86_64": {
+      "abi": "x86_64",
+      "apk_path": "/updates/FieldClock-x86_64.apk",
+      "apk_url": "https://timelogs.ideaserv.online/updates/FieldClock-x86_64.apk",
+      "apk_sha256": "1dc7bda186fec373f648057996916af0b291f8dafd63b958c337d910085ad119",
+      "apk_size_bytes": 55846196
+    },
+    "x86": {
+      "abi": "x86",
+      "apk_path": "/updates/FieldClock-x86.apk",
+      "apk_url": "https://timelogs.ideaserv.online/updates/FieldClock-x86.apk",
+      "apk_sha256": "1dc7bda186fec373f648057996916af0b291f8dafd63b958c337d910085ad119",
+      "apk_size_bytes": 55846196
+    }
+  },
   "details": [
     "Bug fixes and improvements."
   ]

@@ -37,7 +37,7 @@ APP_LABEL="FieldClock"
 UPDATE_MANIFEST_NAME="mobile.json"
 UPDATE_APK_PATH="/updates/$LATEST_APK_NAME"
 UPDATE_PUBLIC_BASE_URL="${UPDATE_PUBLIC_BASE_URL:-https://timelogs.ideaserv.online}"
-ABI_LIST=("arm64-v8a" "armeabi-v7a" "x86_64" "x86")
+ABI_LIST=("arm64-v8a" "armeabi-v7a")
 
 if [[ -n "${UPDATE_PUBLISH_TARGET:-}" ]]; then
   DEFAULT_UPDATE_PUBLISH_TARGET="$UPDATE_PUBLISH_TARGET"

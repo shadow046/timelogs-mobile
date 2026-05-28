@@ -2,7 +2,7 @@
   "expo": {
     "name": "FieldClock",
     "slug": "fieldclock",
-    "version": "1.1.23",
+    "version": "1.1.25",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +21,7 @@
     },
     "android": {
       "package": "com.timelogs.presence",
-      "versionCode": 1012300,
+      "versionCode": 1012500,
       "permissions": [
         "CAMERA",
         "ACCESS_COARSE_LOCATION",
