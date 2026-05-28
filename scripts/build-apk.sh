@@ -26,7 +26,11 @@ APP_CONFIG_PATH="$MOBILE_ROOT/app.json"
 ANDROID_BUILD_GRADLE="$ANDROID_ROOT/app/build.gradle"
 ANDROID_STRINGS_PATH="$ANDROID_ROOT/app/src/main/res/values/strings.xml"
 BUILD_PATH="$ANDROID_ROOT/app/build/outputs/apk/release"
-OUTPUT_DIR="$PROJECT_ROOT/APK"
+DEFAULT_OUTPUT_DIR="$PROJECT_ROOT/APK"
+if [[ -d "/var/www/html" && -w "/var/www/html" ]]; then
+  DEFAULT_OUTPUT_DIR="/var/www/html/fieldclock-apk"
+fi
+OUTPUT_DIR="${APK_OUTPUT_DIR:-${FIELD_CLOCK_APK_OUTPUT_DIR:-$DEFAULT_OUTPUT_DIR}}"
 LATEST_INFO_FILE="$OUTPUT_DIR/latest.txt"
 LATEST_APK_NAME="FieldClock.apk"
 APP_LABEL="FieldClock"
@@ -492,8 +496,6 @@ if [[ -z "${SOURCE_APK:-}" || ! -f "$SOURCE_APK" ]]; then
 fi
 
 mkdir -p "$OUTPUT_DIR"
-cp "$SOURCE_APK" "$BUILD_PATH/$LATEST_APK_NAME"
-cp "$SOURCE_APK" "$BUILD_PATH/$VERSIONED_APK_NAME"
 cp "$SOURCE_APK" "$OUTPUT_DIR/$LATEST_APK_NAME"
 cp "$SOURCE_APK" "$OUTPUT_DIR/$VERSIONED_APK_NAME"
 
@@ -502,8 +504,6 @@ for abi in "${ABI_LIST[@]}"; do
   if [[ -n "$ABI_SOURCE_APK" && -f "$ABI_SOURCE_APK" ]]; then
     cp "$ABI_SOURCE_APK" "$OUTPUT_DIR/FieldClock-${abi}.apk"
     cp "$ABI_SOURCE_APK" "$OUTPUT_DIR/FieldClock-${VERSION}-${abi}.apk"
-    cp "$ABI_SOURCE_APK" "$BUILD_PATH/FieldClock-${abi}.apk"
-    cp "$ABI_SOURCE_APK" "$BUILD_PATH/FieldClock-${VERSION}-${abi}.apk"
   fi
 done
 
